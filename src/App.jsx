@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search, Plus, X, Trash2, Pencil, Download, Lock, Unlock,
   ShoppingBag, LayoutDashboard, Settings, ImageOff,
-  Package, DollarSign, TrendingUp, Send, Check,
+  Package, DollarSign, TrendingUp, Send, Check, MapPin, Info,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -21,8 +21,8 @@ const CATEGORIES = [
 
 const EMPTY_PRODUCT = {
   nombre: "", categoria: "", subcategoria: "", color: "", talla: "",
-  material: "", genero: "", precioVenta: "", precioCompra: "", cantidad: 1,
-  ubicacion: "", imagen: null,
+  material: "", genero: "", grupo: "", precioVenta: "", precioCompra: "", cantidad: 1,
+  ubicacion: "", imagen: null, disponible: true,
 };
 
 const PRODUCTS_COL = collection(db, "products");
@@ -158,6 +158,7 @@ export default function App() {
   const filtered = useMemo(() => {
     const terms = query.toLowerCase().split(/[\s+]+/).filter(Boolean);
     return products.filter((p) => {
+      if (p.disponible === false) return false;
       if (activeCat !== "Todas" && p.categoria !== activeCat) return false;
       if (terms.length === 0) return true;
       const hay = [p.nombre, p.categoria, p.subcategoria, p.color, p.talla, p.material, p.genero]
@@ -241,6 +242,13 @@ export default function App() {
     try { await deleteDoc(doc(db, "products", id)); } catch { setConnError(true); }
   };
 
+  const toggleAvailable = async (id) => {
+    const target = products.find((p) => p.id === id);
+    if (!target) return;
+    try { await setDoc(doc(db, "products", id), { ...target, disponible: !(target.disponible !== false) }); }
+    catch { setConnError(true); }
+  };
+
   // -------------------------------------------------------------------
   // Dashboard
   // -------------------------------------------------------------------
@@ -261,11 +269,12 @@ export default function App() {
   const exportExcel = () => {
     const rows = products.map((p) => ({
       Nombre: p.nombre, Categoría: p.categoria, Subcategoría: p.subcategoria,
-      Color: p.color, Talla: p.talla, Material: p.material, Género: p.genero,
+      Color: p.color, Talla: p.talla, Material: p.material, Género: p.genero, Grupo: p.grupo,
       Cantidad: p.cantidad, "Precio compra": p.precioCompra, "Precio venta": p.precioVenta,
       "Valor inventario (costo)": (Number(p.precioCompra) || 0) * (Number(p.cantidad) || 1),
       "Valor inventario (venta)": (Number(p.precioVenta) || 0) * (Number(p.cantidad) || 1),
       Ubicación: p.ubicacion,
+      Estado: p.disponible === false ? "Vendida" : "Disponible",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -352,6 +361,7 @@ export default function App() {
         <AdminView
           products={products} stats={stats}
           onNew={openNewForm} onEdit={openEditForm} onDelete={deleteProduct}
+          onToggleAvailable={toggleAvailable}
           onExport={exportExcel} loading={loading}
         />
       )}
@@ -472,17 +482,43 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, onAdd
 
 function ProductCard({ p, onAdd }) {
   const [added, setAdded] = useState(false);
+  const [showLoc, setShowLoc] = useState(false);
   return (
     <div className="rounded-2xl overflow-hidden border flex flex-col" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
-      <div className="aspect-[3/4] flex items-center justify-center" style={{ background: "#EFE7DB" }}>
+      <div className="relative aspect-[3/4] flex items-center justify-center" style={{ background: "#EFE7DB" }}>
         {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" /> : <ImageOff size={22} color="#C6BBAC" />}
+        {p.ubicacion && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowLoc((v) => !v); }}
+              className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
+              style={{ background: "rgba(255,255,255,0.75)", backdropFilter: "blur(2px)" }}
+              aria-label="Ver información" title="Información"
+            >
+              <Info size={13} color="#6B5B52" />
+            </button>
+            {showLoc && (
+              <div
+                onClick={(e) => { e.stopPropagation(); setShowLoc(false); }}
+                className="absolute inset-0 flex items-center justify-center p-3 cursor-pointer"
+                style={{ background: "rgba(43,35,32,0.55)" }}
+              >
+                <div className="rounded-xl px-3 py-2.5 shadow-lg text-center w-full" style={{ background: "#F7F3EC" }}>
+                  <p className="text-[9px] tracking-widest uppercase" style={{ color: "#B25C6B" }}>Ubicación</p>
+                  <p className="text-xs font-medium mt-0.5" style={{ color: "#2B2320" }}>{p.ubicacion}</p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
       <div className="p-3 flex flex-col flex-1">
         <p className="text-[10px] tracking-widest uppercase" style={{ color: "#B25C6B" }}>{p.categoria}</p>
         <p className="text-sm font-medium leading-snug mt-0.5 line-clamp-2">{p.nombre}</p>
         {(p.talla || p.color) && <p className="text-[11px] mt-0.5" style={{ color: "#9A8F80" }}>{[p.talla, p.color].filter(Boolean).join(" · ")}</p>}
+        {(p.material || p.grupo) && <p className="text-[11px]" style={{ color: "#B7ACA0" }}>{[p.material, p.grupo].filter(Boolean).join(" · ")}</p>}
         <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="font-display text-lg">{money(p.precioVenta)}</span>
+          <span className="font-display text-2xl leading-none" style={{ color: "#2B2320" }}>{money(p.precioVenta)}</span>
           <button onClick={() => { onAdd(); setAdded(true); setTimeout(() => setAdded(false), 1200); }}
             className="w-8 h-8 rounded-full flex items-center justify-center transition"
             style={added ? { background: "#4CAF50", color: "#fff" } : { background: "#2B2320", color: "#F7F3EC" }} aria-label="Agregar al pedido">
@@ -501,7 +537,7 @@ function EmptyState({ text }) {
 // ---------------------------------------------------------------------------
 // Vista administradora
 // ---------------------------------------------------------------------------
-function AdminView({ products, stats, onNew, onEdit, onDelete, onExport, loading }) {
+function AdminView({ products, stats, onNew, onEdit, onDelete, onToggleAvailable, onExport, loading }) {
   const [tab, setTab] = useState("dashboard");
   return (
     <main className="max-w-5xl mx-auto px-4 pb-16">
@@ -548,19 +584,30 @@ function AdminView({ products, stats, onNew, onEdit, onDelete, onExport, loading
             <EmptyState text="Aún no hay productos. Agrega el primero." />
           ) : (
             <div className="space-y-2">
-              {products.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 rounded-xl border p-2.5" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
-                  <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EFE7DB" }}>
-                    {p.imagen ? <img src={p.imagen} className="w-full h-full object-cover" /> : <ImageOff size={16} color="#C6BBAC" />}
+              {products.map((p) => {
+                const disponible = p.disponible !== false;
+                return (
+                  <div key={p.id} className="flex items-center gap-3 rounded-xl border p-2.5" style={{ borderColor: "#E9E1D4", background: "#fff", opacity: disponible ? 1 : 0.65 }}>
+                    <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EFE7DB" }}>
+                      {p.imagen ? <img src={p.imagen} className="w-full h-full object-cover" /> : <ImageOff size={16} color="#C6BBAC" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{p.nombre}</p>
+                      <p className="text-xs" style={{ color: "#9A8F80" }}>{p.categoria} · {money(p.precioVenta)} · {p.cantidad || 1} pza</p>
+                    </div>
+                    <button
+                      onClick={() => onToggleAvailable(p.id)}
+                      className="flex-shrink-0 text-[10px] font-medium px-2.5 py-1.5 rounded-full tracking-wide uppercase"
+                      style={disponible ? { background: "#E4F3E6", color: "#2F8542" } : { background: "#F1EBE0", color: "#8A7F71" }}
+                      title="Tocar para cambiar el estado"
+                    >
+                      {disponible ? "Disponible" : "Vendida"}
+                    </button>
+                    <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFE2DE" }}><Pencil size={13} color="#6B5B52" /></button>
+                    <button onClick={() => { if (confirm(`¿Eliminar "${p.nombre}"?`)) onDelete(p.id); }} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#FBEAEA" }}><Trash2 size={13} color="#B23B3B" /></button>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{p.nombre}</p>
-                    <p className="text-xs" style={{ color: "#9A8F80" }}>{p.categoria} · {money(p.precioVenta)} · {p.cantidad || 1} pza</p>
-                  </div>
-                  <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFE2DE" }}><Pencil size={13} color="#6B5B52" /></button>
-                  <button onClick={() => { if (confirm(`¿Eliminar "${p.nombre}"?`)) onDelete(p.id); }} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#FBEAEA" }}><Trash2 size={13} color="#B23B3B" /></button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -643,8 +690,17 @@ function ProductForm({ form, setForm, formImage, onFile, onSubmit, onCancel, sav
         <Field label="Género"><input value={form.genero} onChange={set("genero")} className={inputCls} style={inputStyle} placeholder="Mujer / Hombre / Unisex" /></Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
+        <Field label="Grupo"><input value={form.grupo} onChange={set("grupo")} className={inputCls} style={inputStyle} placeholder="Temporada / colección" /></Field>
         <Field label="Cantidad en stock"><input type="number" min="0" step="1" value={form.cantidad} onChange={set("cantidad")} className={inputCls} style={inputStyle} /></Field>
-        <Field label="Ubicación en almacén"><input value={form.ubicacion} onChange={set("ubicacion")} className={inputCls} style={inputStyle} placeholder="Estante B2" /></Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Ubicación"><input value={form.ubicacion} onChange={set("ubicacion")} className={inputCls} style={inputStyle} placeholder="Estante B2" /></Field>
+        <Field label="Estado">
+          <select value={form.disponible === false ? "vendida" : "disponible"} onChange={(e) => setForm((f) => ({ ...f, disponible: e.target.value !== "vendida" }))} className={inputCls} style={inputStyle}>
+            <option value="disponible">Disponible</option>
+            <option value="vendida">Vendida</option>
+          </select>
+        </Field>
       </div>
       <Field label="Foto"><input ref={fileInputRef} type="file" accept="image/*" onChange={onFile} className={`${inputCls} py-2`} style={inputStyle} /></Field>
       {formImage && <div className="rounded-xl overflow-hidden" style={{ background: "#EFE7DB" }}><img src={formImage} className="w-full max-h-64 object-contain" /></div>}
