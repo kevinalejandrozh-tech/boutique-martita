@@ -1,0 +1,415 @@
+{
+ "id": "dia-de-muertos-2026",
+ "nombre": "Día de Muertos 2026",
+ "categorias": [
+  "Catrinas",
+  "Arañas",
+  "Guías metálicas",
+  "Papel picado"
+ ],
+ "ajustes": {
+  "fotoAspecto": "1:1"
+ },
+ "productos": [
+  {
+   "id": "dm26-01",
+   "imagen": "dm01.jpg",
+   "original": "dm01-original.jpg",
+   "nombre": "Catrina con Catrín grande",
+   "categoria": "Catrinas",
+   "talla": "Grande",
+   "color": "Morado",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 50,
+   "cantidad": 10,
+   "recorte": {
+    "x": 136,
+    "y": 0,
+    "width": 848,
+    "height": 848,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-06",
+   "imagen": "dm06.jpg",
+   "original": "dm06-original.jpg",
+   "nombre": "Catrina con Catrín grande",
+   "categoria": "Catrinas",
+   "talla": "Grande",
+   "color": "Morado",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 50,
+   "cantidad": 10,
+   "recorte": {
+    "x": 139,
+    "y": 0,
+    "width": 861,
+    "height": 861,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-13",
+   "imagen": "dm13.jpg",
+   "original": "dm13-original.jpg",
+   "nombre": "Catrina con Catrín grande",
+   "categoria": "Catrinas",
+   "talla": "Grande",
+   "color": "Multicolor",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 50,
+   "cantidad": 10,
+   "recorte": {
+    "x": 139,
+    "y": 0,
+    "width": 854,
+    "height": 854,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-18",
+   "imagen": "dm18.jpg",
+   "original": "dm18-original.jpg",
+   "nombre": "Catrina con Catrín grande",
+   "categoria": "Catrinas",
+   "talla": "Grande",
+   "color": "Multicolor",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 50,
+   "cantidad": 10,
+   "recorte": {
+    "x": 135,
+    "y": 0,
+    "width": 849,
+    "height": 849,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-03",
+   "imagen": "dm03.jpg",
+   "original": "dm03-original.jpg",
+   "nombre": "Catrina con Catrín mediana",
+   "categoria": "Catrinas",
+   "talla": "Mediana",
+   "color": "Multicolor",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 40,
+   "cantidad": 10,
+   "recorte": {
+    "x": 120,
+    "y": 0,
+    "width": 879,
+    "height": 879,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-04",
+   "imagen": "dm04.jpg",
+   "original": "dm04-original.jpg",
+   "nombre": "Catrina con Catrín mediana",
+   "categoria": "Catrinas",
+   "talla": "Mediana",
+   "color": "Morado",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 40,
+   "cantidad": 10,
+   "recorte": {
+    "x": 120,
+    "y": 0,
+    "width": 879,
+    "height": 879,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-08",
+   "imagen": "dm08.jpg",
+   "original": "dm08-original.jpg",
+   "nombre": "Catrina con Catrín mediana",
+   "categoria": "Catrinas",
+   "talla": "Mediana",
+   "color": "Morado",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 40,
+   "cantidad": 10,
+   "recorte": {
+    "x": 120,
+    "y": 0,
+    "width": 881,
+    "height": 881,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-14",
+   "imagen": "dm14.jpg",
+   "original": "dm14-original.jpg",
+   "nombre": "Catrina con Catrín mediana",
+   "categoria": "Catrinas",
+   "talla": "Mediana",
+   "color": "Rosa",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 40,
+   "cantidad": 10,
+   "recorte": {
+    "x": 120,
+    "y": 0,
+    "width": 879,
+    "height": 879,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-11",
+   "imagen": "dm11.jpg",
+   "original": "dm11-original.jpg",
+   "nombre": "Adorno de Catrina mediana",
+   "categoria": "Catrinas",
+   "talla": "Mediana",
+   "color": "Naranja",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 35,
+   "cantidad": 10,
+   "recorte": {
+    "x": 119,
+    "y": 0,
+    "width": 881,
+    "height": 881,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-19",
+   "imagen": "dm19.jpg",
+   "original": "dm19-original.jpg",
+   "nombre": "Adorno de Catrina mediana",
+   "categoria": "Catrinas",
+   "talla": "Mediana",
+   "color": "Multicolor",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 35,
+   "cantidad": 10,
+   "recorte": {
+    "x": 119,
+    "y": 0,
+    "width": 882,
+    "height": 882,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-09",
+   "imagen": "dm09.jpg",
+   "original": "dm09-original.jpg",
+   "nombre": "Araña mediana de 20 cm",
+   "categoria": "Arañas",
+   "talla": "20 cm",
+   "color": "",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 40,
+   "cantidad": 10,
+   "recorte": {
+    "x": 121,
+    "y": 0,
+    "width": 877,
+    "height": 877,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-16",
+   "imagen": "dm16.jpg",
+   "original": "dm16-original.jpg",
+   "nombre": "Araña mediana de 20 cm",
+   "categoria": "Arañas",
+   "talla": "20 cm",
+   "color": "",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 35,
+   "cantidad": 10,
+   "recorte": {
+    "x": 121,
+    "y": 0,
+    "width": 877,
+    "height": 877,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-05",
+   "imagen": "dm05.jpg",
+   "original": "dm05-original.jpg",
+   "nombre": "Adorno de araña chica de 12 cm",
+   "categoria": "Arañas",
+   "talla": "12 cm",
+   "color": "",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 30,
+   "cantidad": 10,
+   "recorte": {
+    "x": 143,
+    "y": 0,
+    "width": 835,
+    "height": 835,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-10",
+   "imagen": "dm10.jpg",
+   "original": "dm10-original.jpg",
+   "nombre": "Adorno de araña chica de 12 cm",
+   "categoria": "Arañas",
+   "talla": "12 cm",
+   "color": "",
+   "material": "",
+   "grupo": "Día de Muertos",
+   "precioVenta": 25,
+   "cantidad": 10,
+   "recorte": {
+    "x": 143,
+    "y": 0,
+    "width": 835,
+    "height": 835,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-02",
+   "imagen": "dm02.jpg",
+   "original": "dm02-original.jpg",
+   "nombre": "Guía de barril Día de Muertos metálica",
+   "categoria": "Guías metálicas",
+   "talla": "",
+   "color": "Naranja y morado",
+   "material": "Metálico",
+   "grupo": "Día de Muertos",
+   "precioVenta": 45,
+   "cantidad": 10,
+   "recorte": {
+    "x": 135,
+    "y": 0,
+    "width": 850,
+    "height": 850,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-20",
+   "imagen": "dm20.jpg",
+   "original": "dm20-original.jpg",
+   "nombre": "Guía de barril Día de Muertos metálica",
+   "categoria": "Guías metálicas",
+   "talla": "",
+   "color": "Naranja y morado",
+   "material": "Metálico",
+   "grupo": "Día de Muertos",
+   "precioVenta": 50,
+   "cantidad": 10,
+   "recorte": {
+    "x": 135,
+    "y": 0,
+    "width": 849,
+    "height": 849,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-07",
+   "imagen": "dm07.jpg",
+   "original": "dm07-original.jpg",
+   "nombre": "Guía sencilla Día de Muertos metálica",
+   "categoria": "Guías metálicas",
+   "talla": "",
+   "color": "Rojo y negro",
+   "material": "Metálico",
+   "grupo": "Día de Muertos",
+   "precioVenta": 35,
+   "cantidad": 10,
+   "recorte": {
+    "x": 128,
+    "y": 0,
+    "width": 864,
+    "height": 864,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-17",
+   "imagen": "dm17.jpg",
+   "original": "dm17-original.jpg",
+   "nombre": "Guía sencilla Día de Muertos metálica",
+   "categoria": "Guías metálicas",
+   "talla": "",
+   "color": "Rojo y negro",
+   "material": "Metálico",
+   "grupo": "Día de Muertos",
+   "precioVenta": 29,
+   "cantidad": 10,
+   "recorte": {
+    "x": 128,
+    "y": 0,
+    "width": 864,
+    "height": 864,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-12",
+   "imagen": "dm12.jpg",
+   "original": "dm12-original.jpg",
+   "nombre": "Hoja de papel china picado ½",
+   "categoria": "Papel picado",
+   "talla": "½",
+   "color": "Surtido",
+   "material": "Papel china",
+   "grupo": "Día de Muertos",
+   "precioVenta": 1.5,
+   "cantidad": 10,
+   "recorte": {
+    "x": 118,
+    "y": 0,
+    "width": 883,
+    "height": 883,
+    "rotacion": 0
+   }
+  },
+  {
+   "id": "dm26-15",
+   "imagen": "dm15.jpg",
+   "original": "dm15-original.jpg",
+   "nombre": "Hoja de papel china picado ¼",
+   "categoria": "Papel picado",
+   "talla": "¼",
+   "color": "Surtido",
+   "material": "Papel china",
+   "grupo": "Día de Muertos",
+   "precioVenta": 1,
+   "cantidad": 10,
+   "recorte": {
+    "x": 139,
+    "y": 0,
+    "width": 842,
+    "height": 842,
+    "rotacion": 0
+   }
+  }
+ ]
+}

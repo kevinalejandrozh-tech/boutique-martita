@@ -1,1 +1,59 @@
 @import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Modo edición: resaltado de lo que se puede tocar para editar
+   --------------------------------------------------------------------------- */
+.editable {
+  outline: 1.5px dashed rgba(178, 92, 107, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.editable:hover,
+.editable:focus-visible {
+  background-color: rgba(178, 92, 107, 0.1);
+}
+.editable-vacio {
+  opacity: 0.55;
+  font-style: italic;
+}
+.editable-lapiz {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  border-radius: 999px;
+  background: #b25c6b;
+  color: #fff;
+  vertical-align: middle;
+  cursor: pointer;
+  box-shadow: 0 0 0 1.5px #fff;
+}
+.editable-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #b25c6b;
+  color: #fff;
+  z-index: 1;
+}
+.editable-foto {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(43, 35, 32, 0.8);
+  color: #fff;
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}

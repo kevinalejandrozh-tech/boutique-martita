@@ -1,0 +1,274 @@
+// ---------------------------------------------------------------------------
+// Textos editables del sitio
+// Cada entrada: [clave, etiqueta que ve la administradora, texto original].
+// Las variables entre llaves ({n}, {nombre}, {tienda}…) se reemplazan solas.
+// Los cambios se guardan en Firestore (settings/textos) y se ven en vivo.
+// ---------------------------------------------------------------------------
+
+export const SECCIONES = [
+  ["sitio", "Sitio y pestaña del navegador"],
+  ["tienda", "Encabezado"],
+  ["catalogo", "Catálogo"],
+  ["tarjeta", "Tarjetas de producto"],
+  ["pedido", "Pedido y WhatsApp"],
+  ["acceso", "Acceso de administradora"],
+  ["admin", "Panel de administración"],
+  ["dash", "Dashboard"],
+  ["prod", "Lista de productos"],
+  ["venta", "Ventas"],
+  ["form", "Formulario de producto"],
+  ["cat", "Categorías"],
+  ["config", "Configuración"],
+  ["general", "Mensajes generales"],
+];
+
+export const TEXTOS = [
+  // Sitio
+  ["sitio.titulo", "Título de la pestaña del navegador", "{tienda} — Catálogo"],
+  ["sitio.descripcion", "Descripción para buscadores", "Catálogo de ropa, calzado y accesorios — {tienda}"],
+
+  // Encabezado
+  ["tienda.nombre", "Nombre de la tienda", "Boutique Martita"],
+  ["tienda.tagline", "Frase bajo el nombre", "Bazar de ropa bonita"],
+  ["tienda.administradora", "Botón de acceso de administradora", "Administradora"],
+  ["tienda.modoTienda", "Botón para salir del panel", "Modo tienda"],
+  ["tienda.configuracion", "Nombre del botón de configuración", "Configuración"],
+
+  // Catálogo
+  ["catalogo.buscarTitulo", "Texto sobre el buscador", "¿Qué estás buscando?"],
+  ["catalogo.buscarPh", "Ejemplo dentro del buscador", "playera + azul + talla M"],
+  ["catalogo.todas", "Botón «todas las categorías»", "Todas"],
+  ["catalogo.titulo", "Título del catálogo", "Piezas sencillas, bien elegidas."],
+  ["catalogo.subtitulo", "Subtítulo del catálogo", "Catálogo de ropa, calzado y accesorios."],
+  ["catalogo.cargando", "Mensaje mientras carga", "Cargando catálogo…"],
+  ["catalogo.vacio", "Catálogo sin productos", "Aún no hay productos en el catálogo."],
+  ["catalogo.sinResultados", "Búsqueda sin resultados", "No encontramos nada con esa búsqueda."],
+  ["catalogo.portadaAlt", "Descripción de la imagen de portada", "Portada de {tienda}"],
+
+  // Tarjetas
+  ["tarjeta.info", "Botón de información", "Información"],
+  ["tarjeta.ubicacion", "Título de la ubicación", "Ubicación"],
+  ["tarjeta.agregar", "Botón para agregar al pedido", "Agregar al pedido"],
+  ["tarjeta.limite", "Aviso de piezas disponibles", "Solo hay {n} disponibles"],
+
+  // Pedido
+  ["pedido.articulo", "Contador de artículos (uno)", "{n} artículo"],
+  ["pedido.articulos", "Contador de artículos (varios)", "{n} artículos"],
+  ["pedido.titulo", "Título del pedido", "Tu pedido"],
+  ["pedido.vacio", "Pedido vacío", "Tu pedido está vacío."],
+  ["pedido.cadaUno", "Precio por pieza", "{precio} c/u"],
+  ["pedido.total", "Etiqueta del total", "Total"],
+  ["pedido.enviar", "Botón de WhatsApp", "Enviar pedido por WhatsApp"],
+  ["pedido.mensaje", "Mensaje que se envía por WhatsApp", "¡Hola! Quisiera este pedido de {tienda}:\n\n{lineas}\n\nTotal: {total} ({articulos})"],
+  ["pedido.linea", "Renglón de cada producto en WhatsApp", "• {cantidad}x {nombre}{detalle} — {subtotal}"],
+
+  // Acceso
+  ["acceso.titulo", "Título del acceso", "Acceso administradora"],
+  ["acceso.texto", "Instrucción del acceso", "Ingresa tu PIN para agregar o editar productos."],
+  ["acceso.error", "PIN incorrecto", "PIN incorrecto"],
+  ["acceso.entrar", "Botón entrar", "Entrar"],
+  ["acceso.entrarEditar", "Botón entrar y editar", "Entrar y editar el sitio"],
+  ["acceso.ayuda", "Ayuda bajo el acceso", "PIN de prueba: 1234 (cámbialo en Configuración)"],
+
+  // Panel
+  ["admin.tabDashboard", "Pestaña Dashboard", "Dashboard"],
+  ["admin.tabProductos", "Pestaña Productos", "Productos"],
+  ["admin.editar", "Botón para entrar al modo edición", "Editar sitio"],
+
+  // Dashboard
+  ["dash.kpiArticulos", "Indicador: artículos", "Total de artículos"],
+  ["dash.kpiArticulosSub", "Indicador: artículos (detalle)", "Piezas en inventario"],
+  ["dash.kpiInversion", "Indicador: inversión", "Inversión en inventario"],
+  ["dash.kpiInversionSub", "Indicador: inversión (detalle)", "Capital invertido"],
+  ["dash.kpiValor", "Indicador: valor", "Valor de inventario"],
+  ["dash.kpiValorSub", "Indicador: valor (detalle)", "Valor estimado actual"],
+  ["dash.kpiVentas", "Indicador: ventas", "Total de ventas"],
+  ["dash.kpiVentasSub", "Indicador: ventas (detalle)", "Artículos vendidos:"],
+  ["dash.porCategoria", "Título inventario por categoría", "Inventario por categoría"],
+  ["dash.excel", "Botón Excel", "Excel"],
+  ["dash.sinDatos", "Dashboard sin datos", "Agrega productos para ver estadísticas."],
+  ["dash.colCategoria", "Columna categoría", "Categoría"],
+  ["dash.colPiezas", "Columna piezas", "Piezas"],
+  ["dash.colInversion", "Columna inversión", "Inversión"],
+  ["dash.colValorVenta", "Columna valor venta", "Valor venta"],
+  ["dash.colUtilidad", "Columna utilidad", "Utilidad"],
+  ["dash.colTemporada", "Columna temporada", "Temporada"],
+  ["dash.totalPiezas", "Total de piezas", "Total de piezas en inventario:"],
+  ["dash.temporalidad", "Título temporalidad", "Temporalidad"],
+  ["dash.temporalidadVacia", "Temporalidad sin datos", "Cada temporada trae nuevas oportunidades para brillar."],
+  ["dash.reporte", "Título reporte de ventas", "Reporte de ventas"],
+  ["dash.desde", "Filtro desde", "Desde"],
+  ["dash.hasta", "Filtro hasta", "Hasta"],
+  ["dash.rango7", "Botón 7 días", "7 días"],
+  ["dash.rango30", "Botón 30 días", "30 días"],
+  ["dash.rango90", "Botón 90 días", "90 días"],
+  ["dash.miniTotal", "Resumen: total", "Total de ventas"],
+  ["dash.miniPiezas", "Resumen: piezas", "Piezas vendidas"],
+  ["dash.miniUtilidad", "Resumen: utilidad", "Utilidad"],
+  ["dash.sinVentas", "Sin ventas en el rango", "No hay ventas registradas en este rango de fechas."],
+  ["dash.detalle", "Detalle de ventas", "Detalle ({n})"],
+  ["dash.ventaPiezas", "Piezas en el detalle", "{n} pza"],
+  ["dash.sinCategoria", "Productos sin categoría", "Sin categoría"],
+  ["dash.sinTemporada", "Productos sin temporada", "Sin temporada"],
+
+  // Lista de productos
+  ["prod.agregar", "Botón agregar producto", "Agregar producto"],
+  ["prod.buscarPh", "Ejemplo del buscador", "playera + azul + talla M"],
+  ["prod.filtros", "Botón filtros", "Filtros"],
+  ["prod.conteo", "Conteo de productos", "{n} de {total}"],
+  ["prod.estado", "Filtro estado", "Estado"],
+  ["prod.estadoTodos", "Estado: todos", "Todos"],
+  ["prod.estadoDisponible", "Estado: disponible", "Disponible"],
+  ["prod.estadoAgotado", "Estado: agotado", "Agotado"],
+  ["prod.estadoOculto", "Estado: oculto", "Oculto"],
+  ["prod.filtroCategoria", "Filtro categoría", "Categoría"],
+  ["prod.filtroColor", "Filtro color", "Color"],
+  ["prod.filtroGrupo", "Filtro temporada", "Temporada / grupo"],
+  ["prod.filtroProveedor", "Filtro proveedor", "Proveedor"],
+  ["prod.filtroTodas", "Opción todas", "Todas"],
+  ["prod.compraDesde", "Filtro compra desde", "Compra desde"],
+  ["prod.compraHasta", "Filtro compra hasta", "Compra hasta"],
+  ["prod.ordenar", "Ordenar por", "Ordenar por"],
+  ["prod.ordenReciente", "Orden: reciente", "Más reciente"],
+  ["prod.ordenAntiguos", "Orden: días en inventario", "Más días en inventario"],
+  ["prod.ordenPrecioAlto", "Orden: precio mayor", "Precio: mayor a menor"],
+  ["prod.ordenPrecioBajo", "Orden: precio menor", "Precio: menor a mayor"],
+  ["prod.ordenNombre", "Orden: nombre", "Nombre (A-Z)"],
+  ["prod.limpiar", "Botón limpiar filtros", "Limpiar filtros"],
+  ["prod.cargando", "Mensaje mientras carga", "Cargando…"],
+  ["prod.vacio", "Sin productos", "Aún no hay productos. Agrega el primero."],
+  ["prod.sinCoincidencias", "Sin coincidencias", "Ningún producto coincide con los filtros."],
+  ["prod.stock", "Piezas en stock", "{n} en stock"],
+  ["prod.dias", "Días en inventario", "días en inventario"],
+  ["prod.vendidas", "Piezas vendidas", "{n} vendidas"],
+  ["prod.vender", "Botón vender", "Vender"],
+  ["prod.ocultar", "Botón ocultar", "Ocultar del catálogo"],
+  ["prod.mostrar", "Botón mostrar", "Mostrar en catálogo"],
+  ["prod.editar", "Botón editar", "Editar"],
+  ["prod.eliminar", "Botón eliminar", "Eliminar"],
+  ["prod.confirmarEliminar", "Confirmación al eliminar", "¿Eliminar \"{nombre}\"?"],
+  ["prod.verVentas", "Botón ver ventas", "Ventas ({n})"],
+  ["prod.ultimaVenta", "Última venta", "Última venta: {fecha}"],
+
+  // Ventas
+  ["venta.titulo", "Título registrar venta", "Registrar venta"],
+  ["venta.cantidad", "Campo piezas", "Piezas vendidas"],
+  ["venta.precio", "Campo precio", "Precio por pieza"],
+  ["venta.disponibles", "Piezas disponibles", "Disponibles: {n}"],
+  ["venta.total", "Total de la venta", "Total de la venta"],
+  ["venta.registrar", "Botón registrar", "Registrar venta"],
+  ["venta.registrada", "Aviso venta registrada", "Venta registrada"],
+  ["venta.sinStock", "Aviso sin piezas", "No hay piezas suficientes"],
+  ["venta.deshacer", "Botón deshacer", "Deshacer"],
+  ["venta.deshacerTitulo", "Título deshacer venta", "Deshacer venta"],
+  ["venta.deshacerTexto", "Explicación deshacer venta", "Se regresarán {n} pieza(s) de \"{nombre}\" al inventario y se borrará la venta del {fecha}."],
+  ["venta.pedirPin", "Pedir contraseña", "Ingresa la contraseña de administradora para confirmar."],
+  ["venta.errorPin", "Contraseña incorrecta", "Contraseña incorrecta"],
+
+  // Formulario
+  ["form.tituloNuevo", "Título producto nuevo", "Agregar producto nuevo"],
+  ["form.tituloEditar", "Título editar producto", "Editar producto"],
+  ["form.nombre", "Campo nombre", "Nombre / descripción *"],
+  ["form.nombrePh", "Ejemplo nombre", "Playera oversize estampada"],
+  ["form.categoria", "Campo categoría", "Categoría *"],
+  ["form.selecciona", "Opción vacía", "Selecciona"],
+  ["form.nuevaCategoria", "Opción nueva categoría", "+ Nueva categoría…"],
+  ["form.nuevaCategoriaPh", "Ejemplo nueva categoría", "Nombre de la categoría"],
+  ["form.agregarCategoria", "Botón agregar categoría", "Agregar"],
+  ["form.subcategoria", "Campo subcategoría", "Subcategoría"],
+  ["form.precioVenta", "Campo precio de venta", "Precio de venta *"],
+  ["form.precioCompra", "Campo precio de compra", "Precio de compra (costo)"],
+  ["form.talla", "Campo talla", "Talla"],
+  ["form.tallaPh", "Ejemplo talla", "M"],
+  ["form.color", "Campo color", "Color"],
+  ["form.colorPh", "Ejemplo color", "verde menta"],
+  ["form.material", "Campo material", "Material"],
+  ["form.genero", "Campo género", "Género"],
+  ["form.generoPh", "Ejemplo género", "Mujer / Hombre / Unisex"],
+  ["form.grupo", "Campo grupo", "Grupo"],
+  ["form.grupoPh", "Ejemplo grupo", "Temporada / colección"],
+  ["form.cantidad", "Campo piezas en stock", "Piezas en stock"],
+  ["form.fechaCompra", "Campo fecha de compra", "Fecha de compra"],
+  ["form.proveedor", "Campo proveedor", "Proveedor"],
+  ["form.proveedorPh", "Ejemplo proveedor", "Nombre del proveedor"],
+  ["form.dias", "Días en inventario", "Lleva {n} días en inventario"],
+  ["form.ubicacion", "Campo ubicación", "Ubicación"],
+  ["form.ubicacionPh", "Ejemplo ubicación", "Estante B2"],
+  ["form.ocultar", "Casilla ocultar", "Ocultar del catálogo"],
+  ["form.vendidas", "Piezas vendidas", "Piezas vendidas: {n}"],
+  ["form.foto", "Campo foto", "Foto"],
+  ["form.elegirFoto", "Botón elegir foto", "Elegir foto"],
+  ["form.recortar", "Botón recortar", "Recortar / ajustar"],
+  ["form.quitarFoto", "Botón quitar foto", "Quitar"],
+  ["form.cancelar", "Botón cancelar", "Cancelar"],
+  ["form.guardar", "Botón guardar", "Guardar producto"],
+  ["form.guardando", "Guardando", "Guardando…"],
+
+  // Categorías
+  ["cat.titulo", "Título categorías", "Categorías"],
+  ["cat.texto", "Explicación categorías", "Organiza las categorías del catálogo. Al renombrar o borrar una, sus productos se actualizan."],
+  ["cat.nuevaPh", "Ejemplo nueva categoría", "Nueva categoría"],
+  ["cat.agregar", "Botón agregar", "Agregar"],
+  ["cat.vacio", "Sin categorías", "Aún no hay categorías. Agrega la primera."],
+  ["cat.productos", "Productos por categoría", "{n} productos"],
+  ["cat.confirmarEliminar", "Confirmación al eliminar", "¿Eliminar la categoría \"{nombre}\"? {n} producto(s) quedarán sin categoría."],
+  ["cat.existe", "Categoría repetida", "Esa categoría ya existe"],
+
+  // Configuración
+  ["config.titulo", "Título configuración", "Configuración de la tienda"],
+  ["config.nombre", "Campo nombre", "Nombre de la tienda"],
+  ["config.tagline", "Campo frase", "Frase / tagline"],
+  ["config.whatsapp", "Campo WhatsApp", "WhatsApp (con lada, solo números)"],
+  ["config.pin", "Campo PIN", "PIN de administradora"],
+  ["config.guardar", "Botón guardar", "Guardar configuración"],
+  ["config.compartirTitulo", "Título compartir", "Compartir con tus clientes"],
+  ["config.compartirTexto", "Explicación compartir", "Este es el link real de tu sitio (una vez desplegado). Pégalo aquí si es diferente y genera tu QR."],
+  ["config.copiar", "Botón copiar", "Copiar"],
+  ["config.copiado", "Aviso copiado", "¡Copiado!"],
+  ["config.qrAyuda", "Ayuda del QR", "Escanéalo para probar el link"],
+  ["config.respaldoTitulo", "Título respaldo", "Respaldo de datos"],
+  ["config.respaldoTexto", "Explicación respaldo", "Descarga un archivo con todos tus productos y fotos, además de vivir en Firebase."],
+  ["config.descargar", "Botón descargar respaldo", "Descargar respaldo completo ({n} artículos)"],
+  ["config.restaurar", "Botón restaurar", "Restaurar desde respaldo"],
+  ["config.restaurando", "Restaurando", "Restaurando…"],
+  ["config.restaurado", "Aviso restaurado", "¡Restaurado con éxito!"],
+  ["config.restaurarError", "Error al restaurar", "No se pudo leer el archivo. Verifica que sea un respaldo válido."],
+  ["config.importarTitulo", "Título catálogos listos", "Catálogos listos para cargar"],
+  ["config.importarTexto", "Explicación catálogos listos", "Productos preparados con sus fotos, listos para agregarse al catálogo."],
+  ["config.importarBoton", "Botón cargar catálogo", "Cargar {n} productos"],
+  ["config.importarReemplazar", "Casilla reemplazar", "Borrar antes los productos actuales (se descarga un respaldo)"],
+  ["config.importando", "Progreso de carga", "Cargando {i} de {n}…"],
+  ["config.importado", "Catálogo ya cargado", "Cargado el {fecha}"],
+  ["config.importadoOk", "Aviso catálogo cargado", "Se cargaron {n} productos"],
+  ["config.vaciarTitulo", "Título vaciar catálogo", "Vaciar catálogo"],
+  ["config.vaciarTexto", "Explicación vaciar catálogo", "Borra todos los productos y sus fotos. Antes se descarga un respaldo automático."],
+  ["config.vaciarBoton", "Botón vaciar catálogo", "Vaciar catálogo ({n} productos)"],
+  ["config.vaciando", "Vaciando", "Borrando…"],
+  ["config.vaciado", "Aviso catálogo vacío", "Catálogo vacío"],
+  ["config.pinConfirmar", "Pedir PIN para confirmar", "Escribe tu PIN para confirmar"],
+
+  // Generales
+  ["general.errorConexion", "Error de conexión", "No se pudo conectar con la base de datos. Revisa tu conexión a internet e intenta recargar la página."],
+  ["general.guardado", "Aviso guardado", "Guardado"],
+  ["general.errorGuardar", "Error al guardar", "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo."],
+  ["general.cancelar", "Botón cancelar", "Cancelar"],
+  ["general.confirmar", "Botón confirmar", "Confirmar"],
+];
+
+export const TEXTOS_BASE = Object.fromEntries(TEXTOS.map(([k, , v]) => [k, v]));
+export const ETIQUETAS = Object.fromEntries(TEXTOS.map(([k, l]) => [k, l]));
+
+// Sustituye {variables} dentro de un texto.
+export function rellenar(texto, vars) {
+  if (!vars || typeof texto !== "string") return texto;
+  return texto.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : m));
+}
+
+// Variables que admite un texto (para mostrarlas como ayuda al editar).
+export function variablesDe(clave) {
+  return [...new Set((TEXTOS_BASE[clave] || "").match(/\{\w+\}/g) || [])];
+}
+
+// Firestore: las claves con punto se guardan con "__" para evitar ambigüedad.
+export const claveAFirestore = (k) => k.replace(/\./g, "__");
+export const claveDeFirestore = (k) => k.replace(/__/g, ".");

@@ -4,6 +4,28 @@ Catálogo de ropa con panel de administradora, carrito con pedido por WhatsApp,
 Dashboard de inventario y exportación a Excel. Los datos (productos y fotos)
 viven en Firebase Firestore, en tiempo real entre todos los dispositivos.
 
+## Modo edición
+
+Entra como administradora y toca **Editar sitio** (o «Entrar y editar el sitio» al
+escribir el PIN). En modo edición se puede tocar cualquier texto o imagen para
+cambiarlo; «Todos los textos» lista también los que no se ven (ejemplos de búsqueda,
+mensaje de WhatsApp, avisos). «Diseño e imágenes» cambia el formato de las fotos,
+el tamaño de las tarjetas, el logo y la portada.
+
+## Datos en Firestore
+
+| Documento | Contenido |
+|---|---|
+| `products/{id}` | Producto. `cantidad` = piezas en stock, `ventas` = historial de ventas por pieza, `oculto`, `imagen` (recorte) y `recorte` |
+| `settings/store` | Nombre, frase, WhatsApp, PIN y ajustes de diseño (`fotoAspecto`, `tarjetaTam`, `logoTam`) |
+| `settings/categorias` | `lista` ordenada de categorías |
+| `settings/textos` | Textos modificados (los no modificados usan `src/textos.js`) |
+| `settings/img_logo`, `settings/img_portada` | Logo y portada |
+| `settings/foto_original_{id}` | Foto original sin recortar (solo se carga al editar) |
+
+Los catálogos preparados viven en `public/importar/` (listados en `index.json`) y se
+cargan desde Configuración → «Catálogos listos para cargar».
+
 ## Correr localmente
 
 ```bash
