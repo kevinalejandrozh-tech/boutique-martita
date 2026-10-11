@@ -1,4 +1,4 @@
-# Brenda Negocios — Catálogo web
+# AB&C MARKET — Catálogo web
 
 Catálogo de ropa con panel de administradora, carrito con pedido por WhatsApp,
 Dashboard de inventario y exportación a Excel. Los datos (productos y fotos)

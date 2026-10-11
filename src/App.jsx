@@ -43,7 +43,7 @@ const originalDoc = (clave) => doc(db, "settings", `foto_original_${clave}`);
 const PAQUETES_URL = "/importar/index.json";
 
 const DEFAULT_SETTINGS = {
-  nombre: "Brenda Negocios", tagline: "Bazar de ropa bonita", whatsapp: "", pin: "1234",
+  nombre: "AB&C MARKET", tagline: "Bazar de ropa bonita", whatsapp: "", pin: "1234",
   fotoAspecto: "3:4", tarjetaTam: "normal", logoTam: 44, fondoOpacidad: OPACIDAD_FONDO,
 };
 const CAMPO_TIENDA = { "tienda.nombre": "nombre", "tienda.tagline": "tagline" };

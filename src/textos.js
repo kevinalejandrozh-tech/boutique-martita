@@ -30,7 +30,7 @@ export const TEXTOS = [
   ["sitio.descripcion", "Descripción para buscadores", "Catálogo de productos de temporada — {tienda}"],
 
   // Encabezado
-  ["tienda.nombre", "Nombre de la tienda", "Brenda Negocios"],
+  ["tienda.nombre", "Nombre de la tienda", "AB&C MARKET"],
   ["tienda.tagline", "Frase bajo el nombre", "Bazar de ropa bonita"],
   ["tienda.administradora", "Botón de acceso de administradora", "Administradora"],
   ["tienda.modoTienda", "Botón para salir del panel", "Modo tienda"],
