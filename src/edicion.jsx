@@ -121,14 +121,14 @@ export function EditorCampo({ cfg, onCerrar }) {
 
   return (
     <Modal onClose={guardando ? () => {} : onCerrar} title={cfg.titulo} capa={60}>
-      {cfg.seccion && <p className="text-[11px] -mt-2 mb-3 uppercase tracking-wide" style={{ color: "#9A8F80" }}>{cfg.seccion}</p>}
+      {cfg.seccion && <p className="text-[11px] -mt-2 mb-3 uppercase tracking-wide" style={{ color: "#8C89A0" }}>{cfg.seccion}</p>}
 
       {tipo === "opciones" ? (
         <div className="flex flex-wrap gap-2">
           {cfg.opciones.map((o) => (
             <button key={o.valor} type="button" disabled={guardando} onClick={() => guardar(o.valor)}
               className="px-4 py-2 rounded-full text-sm border"
-              style={o.valor === cfg.valor ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
+              style={o.valor === cfg.valor ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" } : { background: "#fff", color: "#4A4760", borderColor: "#E3E0EC" }}>
               {o.etiqueta}
             </button>
           ))}
@@ -144,12 +144,12 @@ export function EditorCampo({ cfg, onCerrar }) {
       )}
 
       {cfg.variables?.length > 0 && (
-        <p className="text-[11px] mt-2" style={{ color: "#9A8F80" }}>
+        <p className="text-[11px] mt-2" style={{ color: "#8C89A0" }}>
           Puedes usar {cfg.variables.join(" ")} — se reemplazan solos al mostrarse.
         </p>
       )}
       {cfg.original !== undefined && tipo !== "opciones" && cfg.original !== valor && (
-        <p className="text-[11px] mt-2" style={{ color: "#B7ACA0", whiteSpace: "pre-line" }}>Original: “{cfg.original}”</p>
+        <p className="text-[11px] mt-2" style={{ color: "#A9A6BA", whiteSpace: "pre-line" }}>Original: “{cfg.original}”</p>
       )}
       {error && <p className="text-xs mt-2" style={{ color: "#B23B3B" }}>{error}</p>}
 
@@ -157,18 +157,18 @@ export function EditorCampo({ cfg, onCerrar }) {
         {(cfg.acciones || []).map((a) => (
           <button key={a.etiqueta} type="button" disabled={guardando} onClick={() => ejecutar(a.onClick)}
             className="text-xs px-3 py-2.5 rounded-xl flex items-center gap-1.5"
-            style={a.peligro ? { background: "#FBEAEA", color: "#B23B3B" } : { background: "#EFE2DE", color: "#6B5B52" }}>
+            style={a.peligro ? { background: "#FBEAEA", color: "#B23B3B" } : { background: "#ECE8F6", color: "#4A4760" }}>
             {a.icono} {a.etiqueta}
           </button>
         ))}
         {cfg.onRestaurar && cfg.modificado && (
           <button type="button" disabled={guardando} onClick={() => ejecutar(cfg.onRestaurar)}
-            className="text-xs px-3 py-2.5 rounded-xl flex items-center gap-1.5" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+            className="text-xs px-3 py-2.5 rounded-xl flex items-center gap-1.5" style={{ background: "#ECE8F6", color: "#4A4760" }}>
             <RotateCcw size={12} /> Restaurar original
           </button>
         )}
         <div className="flex-1" />
-        <button type="button" disabled={guardando} onClick={onCerrar} className="text-sm px-4 py-2.5 rounded-xl border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>Cancelar</button>
+        <button type="button" disabled={guardando} onClick={onCerrar} className="text-sm px-4 py-2.5 rounded-xl border" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>Cancelar</button>
         {tipo !== "opciones" && (
           <button type="button" disabled={guardando} onClick={() => guardar()} className="text-sm px-5 py-2.5 rounded-xl font-medium disabled:opacity-60" style={boton}>
             {guardando ? "Guardando…" : "Guardar"}
@@ -227,22 +227,22 @@ export function TextosPanel({ valorCrudo, esModificado, onGuardar, onRestaurar, 
 
   return (
     <Modal onClose={onCerrar} title="Todos los textos" muyAncho>
-      <p className="text-xs mb-3" style={{ color: "#9A8F80" }}>
+      <p className="text-xs mb-3" style={{ color: "#8C89A0" }}>
         Cambia cualquier texto del sitio, incluso los que no se ven a simple vista (mensajes, ejemplos de búsqueda y el mensaje de WhatsApp).
       </p>
       <div className="relative mb-3">
-        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" color="#B7ACA0" />
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" color="#A9A6BA" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar texto…" className="w-full rounded-full border pl-10 pr-4 py-2.5 text-sm outline-none" style={inputStyle} />
       </div>
       <div className="space-y-2">
         {grupos.map((g) => {
           const abierta = Boolean(termino) || abiertas[g.id];
           return (
-            <div key={g.id} className="rounded-2xl border" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
+            <div key={g.id} className="rounded-2xl border" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
               <button type="button" onClick={() => setAbiertas((a) => ({ ...a, [g.id]: !a[g.id] }))} className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left">
                 <span className="text-sm font-medium">{g.nombre}</span>
-                <span className="flex items-center gap-2 text-[11px]" style={{ color: "#9A8F80" }}>
-                  {g.modificados > 0 && <span className="px-2 py-0.5 rounded-full" style={{ background: "#F6E4E4", color: "var(--colorAcento)" }}>{g.modificados} cambiado{g.modificados !== 1 ? "s" : ""}</span>}
+                <span className="flex items-center gap-2 text-[11px]" style={{ color: "#8C89A0" }}>
+                  {g.modificados > 0 && <span className="px-2 py-0.5 rounded-full" style={{ background: "#ECE4F7", color: "var(--colorAcento)" }}>{g.modificados} cambiado{g.modificados !== 1 ? "s" : ""}</span>}
                   {g.items.length}
                   {abierta ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </span>
@@ -258,7 +258,7 @@ export function TextosPanel({ valorCrudo, esModificado, onGuardar, onRestaurar, 
             </div>
           );
         })}
-        {grupos.length === 0 && <p className="text-sm py-6 text-center" style={{ color: "#B7ACA0" }}>Ningún texto coincide.</p>}
+        {grupos.length === 0 && <p className="text-sm py-6 text-center" style={{ color: "#A9A6BA" }}>Ningún texto coincide.</p>}
       </div>
     </Modal>
   );
@@ -279,27 +279,27 @@ function FilaTexto({ k, etiqueta, original, actual, modificado, onGuardar, onRes
   };
 
   return (
-    <div className="rounded-xl border p-3" style={{ borderColor: modificado ? "#E9C9CF" : "#F1EBE0", background: "#FDFBF8" }}>
+    <div className="rounded-xl border p-3" style={{ borderColor: modificado ? "#D6CBEC" : "#EEECF3", background: "#FBFAFD" }}>
       <div className="flex items-center justify-between gap-2 mb-1">
-        <p className="text-xs font-medium" style={{ color: "#6B5B52" }}>{etiqueta}</p>
+        <p className="text-xs font-medium" style={{ color: "#4A4760" }}>{etiqueta}</p>
         {modificado && <span className="text-[10px] flex-shrink-0" style={{ color: "var(--colorAcento)" }}>Modificado</span>}
       </div>
       {largo
         ? <textarea rows={3} value={v} onChange={(e) => setV(e.target.value)} className={inputCls} style={inputStyle} />
         : <input value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sucio) guardar(); }} className={inputCls} style={inputStyle} />}
-      {vars.length > 0 && <p className="text-[10px] mt-1" style={{ color: "#B7ACA0" }}>Variables: {vars.join(" ")}</p>}
+      {vars.length > 0 && <p className="text-[10px] mt-1" style={{ color: "#A9A6BA" }}>Variables: {vars.join(" ")}</p>}
       {(sucio || modificado || estado) && (
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2">
           {estado === "ok" && <span className="text-[11px]" style={{ color: "#2F8542" }}>Guardado</span>}
           {estado === "error" && <span className="text-[11px]" style={{ color: "#B23B3B" }}>No se pudo guardar</span>}
           {modificado && !sucio && (
-            <button type="button" onClick={onRestaurar} className="text-[11px] px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+            <button type="button" onClick={onRestaurar} className="text-[11px] px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: "#ECE8F6", color: "#4A4760" }}>
               <RotateCcw size={11} /> Restaurar original
             </button>
           )}
           {sucio && (
             <>
-              <button type="button" onClick={() => setV(actual)} className="text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F7F3EC", color: "#6B5B52" }}>Descartar</button>
+              <button type="button" onClick={() => setV(actual)} className="text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F6F5FA", color: "#4A4760" }}>Descartar</button>
               <button type="button" onClick={guardar} disabled={estado === "guardando"} className="text-[11px] px-3 py-1.5 rounded-full font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
                 {estado === "guardando" ? "Guardando…" : "Guardar"}
               </button>
@@ -347,7 +347,7 @@ export function CategoriasPanel({ categorias, conteo, t, onAgregar, onRenombrar,
 
   return (
     <Modal onClose={onCerrar} title={t("cat.titulo")}>
-      <p className="text-xs mb-4" style={{ color: "#9A8F80" }}>{t("cat.texto")}</p>
+      <p className="text-xs mb-4" style={{ color: "#8C89A0" }}>{t("cat.texto")}</p>
 
       <div className="flex gap-2 mb-4">
         <input value={nueva} onChange={(e) => setNueva(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") agregar(); }}
@@ -359,14 +359,14 @@ export function CategoriasPanel({ categorias, conteo, t, onAgregar, onRenombrar,
       {error && <p className="text-xs mb-3" style={{ color: "#B23B3B" }}>{error}</p>}
 
       {categorias.length === 0 ? (
-        <p className="text-sm py-6 text-center" style={{ color: "#B7ACA0" }}>{t("cat.vacio")}</p>
+        <p className="text-sm py-6 text-center" style={{ color: "#A9A6BA" }}>{t("cat.vacio")}</p>
       ) : (
         <div className="space-y-2">
           {categorias.map((c, i) => (
-            <div key={c} className="rounded-xl border px-3 py-2.5 flex items-center gap-2" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
+            <div key={c} className="rounded-xl border px-3 py-2.5 flex items-center gap-2" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
               <div className="flex flex-col">
-                <button type="button" disabled={ocupado || i === 0} onClick={() => correr(() => onMover(c, -1))} className="disabled:opacity-25" aria-label="Subir"><ChevronUp size={15} color="#6B5B52" /></button>
-                <button type="button" disabled={ocupado || i === categorias.length - 1} onClick={() => correr(() => onMover(c, 1))} className="disabled:opacity-25" aria-label="Bajar"><ChevronDown size={15} color="#6B5B52" /></button>
+                <button type="button" disabled={ocupado || i === 0} onClick={() => correr(() => onMover(c, -1))} className="disabled:opacity-25" aria-label="Subir"><ChevronUp size={15} color="#4A4760" /></button>
+                <button type="button" disabled={ocupado || i === categorias.length - 1} onClick={() => correr(() => onMover(c, 1))} className="disabled:opacity-25" aria-label="Bajar"><ChevronDown size={15} color="#4A4760" /></button>
               </div>
               {enEdicion === c ? (
                 <input autoFocus value={valor} onChange={(e) => setValor(e.target.value)}
@@ -375,13 +375,13 @@ export function CategoriasPanel({ categorias, conteo, t, onAgregar, onRenombrar,
               ) : (
                 <button type="button" onClick={() => { setEnEdicion(c); setValor(c); }} className="flex-1 min-w-0 text-left">
                   <span className="text-sm font-medium block truncate">{c}</span>
-                  <span className="text-[11px]" style={{ color: "#9A8F80" }}>{t("cat.productos", { n: conteo[c] || 0 })}</span>
+                  <span className="text-[11px]" style={{ color: "#8C89A0" }}>{t("cat.productos", { n: conteo[c] || 0 })}</span>
                 </button>
               )}
               {enEdicion === c ? (
-                <button type="button" onClick={() => renombrar(c)} disabled={ocupado} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#2B2320" }} aria-label="Guardar nombre"><Check size={14} color="#F7F3EC" /></button>
+                <button type="button" onClick={() => renombrar(c)} disabled={ocupado} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#17152B" }} aria-label="Guardar nombre"><Check size={14} color="#F6F5FA" /></button>
               ) : (
-                <button type="button" onClick={() => { setEnEdicion(c); setValor(c); }} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFE2DE" }} aria-label="Renombrar"><Pencil size={13} color="#6B5B52" /></button>
+                <button type="button" onClick={() => { setEnEdicion(c); setValor(c); }} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#ECE8F6" }} aria-label="Renombrar"><Pencil size={13} color="#4A4760" /></button>
               )}
               <button type="button" onClick={() => eliminar(c)} disabled={ocupado} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#FBEAEA" }} aria-label="Eliminar"><Trash2 size={13} color="#B23B3B" /></button>
             </div>
@@ -409,7 +409,7 @@ export function TamanoLogo({ valor, onCambiar }) {
   };
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#9A8F80" }}>Tamaño del logo en pantalla · {v}px</p>
+      <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Tamaño del logo en pantalla · {v}px</p>
       <input type="range" min={32} max={96} step={2} value={v} onChange={(e) => cambiar(Number(e.target.value))} className="w-full" style={{ accentColor: "var(--colorAcento)" }} aria-label="Tamaño del logo" />
     </div>
   );
@@ -418,24 +418,24 @@ export function TamanoLogo({ valor, onCambiar }) {
 export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEditarLogo, onQuitarLogo, onEditarPortada, onQuitarPortada, onCerrar }) {
   const chip = (activo) => (activo
     ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" }
-    : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" });
+    : { background: "#fff", color: "#4A4760", borderColor: "#E3E0EC" });
   const seccion = "rounded-2xl border p-4 space-y-3";
-  const caja = { borderColor: "#E9E1D4", background: "#fff" };
+  const caja = { borderColor: "#E6E3EE", background: "#fff" };
   const titulo = "text-xs font-semibold tracking-widest uppercase";
 
   return (
     <Modal onClose={onCerrar} title="Diseño e imágenes" wide>
       <div className="space-y-3">
         <div className={seccion} style={caja}>
-          <p className={titulo} style={{ color: "#6B5B52" }}>Colores</p>
+          <p className={titulo} style={{ color: "#4A4760" }}>Colores</p>
           <div className="grid grid-cols-2 gap-2">
             {COLORES.map(([k, txt, def]) => {
               const val = varsColores(settings)["--" + k];
               return (
-                <label key={k} className="flex items-center gap-2 rounded-xl border p-2 text-[11px]" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>
+                <label key={k} className="flex items-center gap-2 rounded-xl border p-2 text-[11px]" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>
                   <input type="color" value={val} onChange={(e) => onAjuste(k, e.target.value)} className="w-9 h-9 rounded-lg border-0 p-0 bg-transparent flex-shrink-0 cursor-pointer" aria-label={txt} />
                   <span className="min-w-0 leading-tight">{txt}{val.toLowerCase() !== def.toLowerCase() && (
-                    <button type="button" onClick={(e) => { e.preventDefault(); onAjuste(k, def); }} className="block underline mt-0.5" style={{ color: "#9A8F80" }}>Restaurar</button>
+                    <button type="button" onClick={(e) => { e.preventDefault(); onAjuste(k, def); }} className="block underline mt-0.5" style={{ color: "#8C89A0" }}>Restaurar</button>
                   )}</span>
                 </label>
               );
@@ -444,9 +444,9 @@ export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEd
         </div>
 
         <div className={seccion} style={caja}>
-          <p className={titulo} style={{ color: "#6B5B52" }}>Fotos de productos</p>
+          <p className={titulo} style={{ color: "#4A4760" }}>Fotos de productos</p>
           <div>
-            <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#9A8F80" }}>Formato del recuadro</p>
+            <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Formato del recuadro</p>
             <div className="flex flex-wrap gap-1.5">
               {FORMATOS_FOTO.map((f) => (
                 <button key={f} type="button" onClick={() => onAjuste("fotoAspecto", f)} className="text-xs px-3 py-1.5 rounded-full border" style={chip(settings.fotoAspecto === f)}>{f}</button>
@@ -454,37 +454,37 @@ export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEd
             </div>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#9A8F80" }}>Tamaño de las tarjetas</p>
+            <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Tamaño de las tarjetas</p>
             <div className="flex flex-wrap gap-1.5">
               {TAMANOS_TARJETA.map(([v, txt]) => (
                 <button key={v} type="button" onClick={() => onAjuste("tarjetaTam", v)} className="text-xs px-3 py-1.5 rounded-full border" style={chip(settings.tarjetaTam === v)}>{txt}</button>
               ))}
             </div>
           </div>
-          <p className="text-[11px]" style={{ color: "#9A8F80" }}>Para recortar la foto de un producto, toca «Foto» sobre su tarjeta.</p>
+          <p className="text-[11px]" style={{ color: "#8C89A0" }}>Para recortar la foto de un producto, toca «Foto» sobre su tarjeta.</p>
         </div>
 
         <div className={seccion} style={caja}>
-          <p className={titulo} style={{ color: "#6B5B52" }}>Logo</p>
+          <p className={titulo} style={{ color: "#4A4760" }}>Logo</p>
           <div className="flex items-center gap-3">
-            <div className="rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ width: 56, height: 56, background: "#EFE2DE" }}>
+            <div className="rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ width: 56, height: 56, background: "#ECE8F6" }}>
               {imagenes.logo ? <img src={imagenes.logo} alt="" className="w-full h-full object-cover" /> : logoPorDefecto}
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={onEditarLogo} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#EFE2DE", color: "#6B5B52" }}><ImageIcon size={13} /> {imagenes.logo ? "Cambiar / recortar" : "Subir logo"}</button>
-              {imagenes.logo && <button type="button" onClick={onQuitarLogo} className="text-xs px-3 py-2 rounded-xl" style={{ background: "#F7F3EC", color: "#6B5B52" }}>Usar mariposa original</button>}
+              <button type="button" onClick={onEditarLogo} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#ECE8F6", color: "#4A4760" }}><ImageIcon size={13} /> {imagenes.logo ? "Cambiar / recortar" : "Subir logo"}</button>
+              {imagenes.logo && <button type="button" onClick={onQuitarLogo} className="text-xs px-3 py-2 rounded-xl" style={{ background: "#F6F5FA", color: "#4A4760" }}>Usar mariposa original</button>}
             </div>
           </div>
           <TamanoLogo valor={settings.logoTam} onCambiar={(n) => onAjuste("logoTam", n)} />
         </div>
 
         <div className={seccion} style={caja}>
-          <p className={titulo} style={{ color: "#6B5B52" }}>Imagen de portada</p>
+          <p className={titulo} style={{ color: "#4A4760" }}>Imagen de portada</p>
           {imagenes.portada
             ? <img src={imagenes.portada} alt="" className="w-full rounded-xl" />
-            : <p className="text-[11px]" style={{ color: "#9A8F80" }}>Opcional: una imagen grande arriba del catálogo. Si no agregas una, no se muestra nada.</p>}
+            : <p className="text-[11px]" style={{ color: "#8C89A0" }}>Opcional: una imagen grande arriba del catálogo. Si no agregas una, no se muestra nada.</p>}
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={onEditarPortada} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+            <button type="button" onClick={onEditarPortada} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#ECE8F6", color: "#4A4760" }}>
               <ImagePlus size={13} /> {imagenes.portada ? "Cambiar / recortar" : "Agregar portada"}
             </button>
             {imagenes.portada && <button type="button" onClick={onQuitarPortada} className="text-xs px-3 py-2 rounded-xl" style={{ background: "#FBEAEA", color: "#B23B3B" }}>Quitar portada</button>}

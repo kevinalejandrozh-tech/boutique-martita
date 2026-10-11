@@ -4,7 +4,7 @@ import {
   ShoppingBag, LayoutDashboard, Settings, ImageOff,
   Package, DollarSign, Send, Check, Info,
   Filter, Calendar, Clock, Truck, Tag, BarChart3, ShieldCheck, RotateCcw,
-  Eye, EyeOff, Minus, Undo2, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
+  Eye, EyeOff, Minus, Undo2, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp, ArrowUpRight,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -46,9 +46,9 @@ const DEFAULT_SETTINGS = {
 const CAMPO_TIENDA = { "tienda.nombre": "nombre", "tienda.tagline": "tagline" };
 
 const GRID_TARJETAS = {
-  chico: "grid grid-cols-3 md:grid-cols-4 gap-2.5",
-  normal: "grid grid-cols-2 md:grid-cols-3 gap-4",
-  grande: "grid grid-cols-1 sm:grid-cols-2 gap-4",
+  chico: "grid grid-cols-3 md:grid-cols-4 gap-x-2.5 gap-y-5",
+  normal: "grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-7",
+  grande: "grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-8",
 };
 
 // ---------------------------------------------------------------------------
@@ -155,9 +155,12 @@ function descargar(blob, nombre) {
 // ---------------------------------------------------------------------------
 const BrandStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600;700&display=swap');
-    .font-display { font-family: 'Cormorant Garamond', serif; }
-    .font-body { font-family: 'Work Sans', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+    .font-display { font-family: 'Inter Tight', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.025em; }
+    .font-body { font-family: 'Inter', sans-serif; }
+    .etiqueta-seccion { font-size: 11px; letter-spacing: 0.02em; opacity: 0.6; }
+    .tarjeta-foto img { transition: transform .5s ease; }
+    .tarjeta-foto:hover img { transform: scale(1.03); }
     .scrollbar-none::-webkit-scrollbar { display: none; }
     .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
   `}</style>
@@ -169,20 +172,20 @@ const BrandStyles = () => (
 function ButterflyIcon({ size = 24 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M24 15 C22.5 10.5, 19.5 8, 16.5 8.5" stroke="#2B2320" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      <path d="M24 15 C25.5 10.5, 28.5 8, 31.5 8.5" stroke="#2B2320" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      <path d="M23 16 C14 9, 4 13, 6 23 C7 29, 15 29, 23 23 Z" stroke="#2B2320" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
-      <path d="M23 25 C15 23, 8 27, 10 34 C11 39, 18 38, 23 32 Z" stroke="#2B2320" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
+      <path d="M24 15 C22.5 10.5, 19.5 8, 16.5 8.5" stroke="#17152B" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+      <path d="M24 15 C25.5 10.5, 28.5 8, 31.5 8.5" stroke="#17152B" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+      <path d="M23 16 C14 9, 4 13, 6 23 C7 29, 15 29, 23 23 Z" stroke="#17152B" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
+      <path d="M23 25 C15 23, 8 27, 10 34 C11 39, 18 38, 23 32 Z" stroke="#17152B" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
       <path d="M25 16 C34 9, 44 13, 42 23 C41 29, 33 29, 25 23 Z" style={{ fill: "var(--colorAcento)" }} opacity="0.9" />
       <path d="M25 25 C33 23, 40 27, 38 34 C37 39, 30 38, 25 32 Z" style={{ fill: "var(--colorAcento)" }} opacity="0.7" />
-      <ellipse cx="24" cy="24" rx="1.5" ry="10" fill="#2B2320" />
+      <ellipse cx="24" cy="24" rx="1.5" ry="10" fill="#17152B" />
     </svg>
   );
 }
 
 function Logo({ src, tam = 44 }) {
   return (
-    <div className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: tam, height: tam, background: "#EFE2DE" }}>
+    <div className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: tam, height: tam, background: "#ECE8F6" }}>
       {src ? <img src={src} alt="" className="w-full h-full object-cover" /> : <ButterflyIcon size={Math.round(tam * 0.55)} />}
     </div>
   );
@@ -848,30 +851,30 @@ export default function App() {
 
   return (
     <EdicionCtx.Provider value={ctx}>
-      <div className="font-body min-h-screen flex flex-col" style={{ ...varsColores(settings), background: "var(--colorFondo)", color: "#2B2320" }}>
+      <div className="font-body min-h-screen" style={{ ...varsColores(settings), background: "var(--colorFondo)", color: "#17152B" }}>
         <BrandStyles />
 
-        <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ background: "var(--colorEncabezado)", color: "var(--colorEncabezadoTexto)", borderColor: "#E4DDD1" }}>
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-30" style={{ background: "var(--colorEncabezado)", color: "var(--colorEncabezadoTexto)" }}>
+          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <Editable as="div" className="rounded-full flex-shrink-0" onEditar={editarLogo} titulo="Cambiar o recortar el logo">
                 <Logo src={imagenes.logo?.src} tam={Number(settings.logoTam) || 44} />
               </Editable>
               <div className="min-w-0">
                 <T k="tienda.nombre" as="h1" className="font-display text-2xl leading-tight block" />
-                <T k="tienda.tagline" as="p" className="text-[11px] tracking-widest uppercase block" style={{ color: "#9A8F80" }} />
+                <T k="tienda.tagline" as="p" className="text-xs block" style={{ opacity: 0.6 }} />
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {isAdmin && (
-                <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-full flex items-center justify-center hover:opacity-70 transition" style={{ background: "#EFE2DE" }} aria-label={t("tienda.configuracion")} title={t("tienda.configuracion")}>
-                  <Settings size={16} color="#6B5B52" />
+                <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-full flex items-center justify-center hover:opacity-70 transition border" style={{ borderColor: "currentColor", background: "transparent" }} aria-label={t("tienda.configuracion")} title={t("tienda.configuracion")}>
+                  <Settings size={16} />
                 </button>
               )}
               <button
                 onClick={() => (isAdmin ? salirAdmin() : setPinModal(true))}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition"
-                style={isAdmin ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#EFE2DE", color: "#6B5B52" }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition border"
+                style={isAdmin ? { background: "var(--colorAcento)", color: "#fff", borderColor: "var(--colorAcento)" } : { background: "transparent", color: "inherit", borderColor: "currentColor" }}
                 aria-label={t(isAdmin ? "tienda.modoTienda" : "tienda.administradora")}
               >
                 {isAdmin ? <Unlock size={13} /> : <Lock size={13} />}
@@ -921,39 +924,43 @@ export default function App() {
           />
         )}
 
-        <footer className="mt-10 border-t" style={{ background: "var(--colorPie)", color: "var(--colorPieTexto)", borderColor: "#E4DDD1", marginTop: "auto" }}>
-          <div className="max-w-5xl mx-auto px-4 py-6 text-center text-sm">
-            <T k="pie.texto" as="p" className="block" />
+        <footer style={{ background: "var(--colorPie)", color: "var(--colorPieTexto)" }}>
+          <div className={`max-w-5xl mx-auto px-4 pt-10 ${vistaCliente && cartCount > 0 ? "pb-28" : "pb-10"} grid gap-4 sm:grid-cols-2 sm:items-end`}>
+            <div>
+              <p className="etiqueta-seccion">{settings.nombre}</p>
+              <T k="pie.texto" as="p" className="font-display text-2xl leading-tight mt-1 block" />
+            </div>
+            <p className="text-xs sm:text-right" style={{ opacity: 0.5 }}>© {new Date().getFullYear()} {settings.nombre}</p>
           </div>
         </footer>
 
         {vistaCliente && !editando && cartCount > 0 && (
           <button onClick={() => setCartOpen(true)}
-            className="fixed bottom-4 left-4 right-4 max-w-5xl mx-auto rounded-2xl shadow-xl px-5 py-4 flex items-center justify-between z-40"
-            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
-            <span className="flex items-center gap-2 text-sm font-medium"><ShoppingBag size={18} />{articulosTxt(cartCount)}</span>
-            <span className="font-display text-lg">{money(cartTotal)}</span>
+            className="fixed bottom-4 left-4 right-4 max-w-md mx-auto rounded-full shadow-xl pl-6 pr-1.5 py-1.5 flex items-center justify-between gap-3 z-40"
+            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)", boxShadow: "0 0 0 1px rgba(255,255,255,0.2), 0 12px 32px rgba(23,21,43,0.35)" }}>
+            <span className="flex items-center gap-2 text-sm font-medium"><ShoppingBag size={17} />{articulosTxt(cartCount)} · {money(cartTotal)}</span>
+            <span className="w-11 h-11 rounded-full flex items-center justify-center border" style={{ borderColor: "currentColor" }}><ArrowUpRight size={18} /></span>
           </button>
         )}
 
         {cartOpen && (
           <Modal onClose={() => setCartOpen(false)} title={<T k="pedido.titulo" />}>
             {cart.length === 0 ? (
-              <T k="pedido.vacio" as="p" className="text-sm py-8 text-center" style={{ color: "#9A8F80" }} />
+              <T k="pedido.vacio" as="p" className="text-sm py-8 text-center" style={{ color: "#8C89A0" }} />
             ) : (
               <div className="space-y-3">
                 {cart.map((i) => (
-                  <div key={i.id} className="flex items-center justify-between gap-3 py-2 border-b" style={{ borderColor: "#EFE7DB" }}>
+                  <div key={i.id} className="flex items-center justify-between gap-3 py-2 border-b" style={{ borderColor: "#EEEDF3" }}>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{i.nombre}</p>
-                      <p className="text-xs" style={{ color: "#9A8F80" }}>
+                      <p className="text-xs" style={{ color: "#8C89A0" }}>
                         {[i.detalle, t("pedido.cadaUno", { precio: money(i.precioVenta) })].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <button onClick={() => updateQty(i.id, -1)} className="w-7 h-7 rounded-full border flex items-center justify-center" style={{ borderColor: "#E4DDD1" }}>−</button>
+                      <button onClick={() => updateQty(i.id, -1)} className="w-7 h-7 rounded-full border flex items-center justify-center" style={{ borderColor: "#E3E0EC" }}>−</button>
                       <span className="w-5 text-center text-sm">{i.qty}</span>
-                      <button onClick={() => updateQty(i.id, 1)} className="w-7 h-7 rounded-full border flex items-center justify-center" style={{ borderColor: "#E4DDD1" }}>+</button>
+                      <button onClick={() => updateQty(i.id, 1)} className="w-7 h-7 rounded-full border flex items-center justify-center" style={{ borderColor: "#E3E0EC" }}>+</button>
                     </div>
                   </div>
                 ))}
@@ -980,17 +987,17 @@ export default function App() {
 
         {pinModal && (
           <Modal onClose={() => { setPinModal(false); setPinInput(""); setPinError(""); }} title={<T k="acceso.titulo" />}>
-            <T k="acceso.texto" as="p" className="text-sm mb-4 block" style={{ color: "#9A8F80" }} />
+            <T k="acceso.texto" as="p" className="text-sm mb-4 block" style={{ color: "#8C89A0" }} />
             <input type="password" inputMode="numeric" autoFocus value={pinInput}
               onChange={(e) => setPinInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && tryEnterAdmin()}
-              className="w-full rounded-xl border px-4 py-3 text-center text-lg tracking-[0.4em]" style={{ borderColor: "#E4DDD1" }} placeholder="••••" />
+              className="w-full rounded-xl border px-4 py-3 text-center text-lg tracking-[0.4em]" style={{ borderColor: "#E3E0EC" }} placeholder="••••" />
             {pinError && <p className="text-xs mt-2 text-center" style={{ color: "#B23B3B" }}>{pinError}</p>}
             <button onClick={() => tryEnterAdmin(false)} className="w-full mt-4 rounded-xl py-3 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("acceso.entrar")}</button>
-            <button onClick={() => tryEnterAdmin(true)} className="w-full mt-2 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: "#EFE2DE", color: "var(--colorAcento)" }}>
+            <button onClick={() => tryEnterAdmin(true)} className="w-full mt-2 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: "#ECE8F6", color: "var(--colorAcento)" }}>
               <Pencil size={13} /> {t("acceso.entrarEditar")}
             </button>
-            <T k="acceso.ayuda" as="p" className="text-[11px] mt-3 text-center block" style={{ color: "#B7ACA0" }} />
+            <T k="acceso.ayuda" as="p" className="text-[11px] mt-3 text-center block" style={{ color: "#A9A6BA" }} />
           </Modal>
         )}
 
@@ -1041,7 +1048,7 @@ export default function App() {
         {editorImagen && <ImageEditor {...editorImagen} onCancelar={() => setEditorImagen(null)} />}
 
         {aviso && (
-          <div className="fixed left-1/2 -translate-x-1/2 bottom-24 px-4 py-2.5 rounded-full text-sm shadow-lg flex items-center gap-2" style={{ zIndex: 90, background: aviso.tipo === "error" ? "#9C3B3B" : "#2B2320", color: "#F7F3EC" }}>
+          <div className="fixed left-1/2 -translate-x-1/2 bottom-24 px-4 py-2.5 rounded-full text-sm shadow-lg flex items-center gap-2" style={{ zIndex: 90, background: aviso.tipo === "error" ? "#9C3B3B" : "#17152B", color: "#F6F5FA" }}>
             {aviso.tipo === "error" ? <AlertTriangle size={14} /> : <Check size={14} />} {aviso.texto}
           </div>
         )}
@@ -1057,7 +1064,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
   const { t, editando } = useEdicion();
   const tam = settings.tarjetaTam || "normal";
   return (
-    <main className="max-w-5xl mx-auto px-4 pb-32">
+    <main className="max-w-5xl mx-auto px-4 pb-16">
       {(portada || editando) && (
         <div className="pt-5">
           {portada ? (
@@ -1066,7 +1073,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
               <BotonFoto onClick={acciones.portada} texto="Portada" className="absolute bottom-3 left-3" />
             </div>
           ) : (
-            <button type="button" onClick={acciones.portada} className="w-full rounded-2xl border-2 border-dashed py-6 flex items-center justify-center gap-2 text-sm" style={{ borderColor: "#E3A9B4", color: "var(--colorAcento)" }}>
+            <button type="button" onClick={acciones.portada} className="w-full rounded-2xl border-2 border-dashed py-6 flex items-center justify-center gap-2 text-sm" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)" }}>
               <ImagePlus size={16} /> Agregar imagen de portada (opcional)
             </button>
           )}
@@ -1074,23 +1081,23 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
       )}
 
       <div className="pt-6 pb-2">
-        <T k="catalogo.buscarTitulo" as="p" className="text-sm mb-2 block" style={{ color: "#6B5B52" }} />
+        <T k="catalogo.buscarTitulo" as="p" className="etiqueta-seccion mb-2 block" />
         <div className="relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" color="#B7ACA0" />
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" color="#A9A6BA" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("catalogo.buscarPh")}
-            className="w-full rounded-full border pl-11 pr-4 py-3 text-sm outline-none focus:ring-2" style={{ borderColor: "#E4DDD1", background: "#fff" }} />
+            className="w-full rounded-full border pl-11 pr-4 py-3.5 text-sm outline-none focus:ring-2" style={{ borderColor: "#E3E0EC", background: "#fff", "--tw-ring-color": "#B9A7DD" }} />
           <EditBadge k="catalogo.buscarPh" etiqueta="Ejemplo" className="absolute right-3 top-1/2 -translate-y-1/2" />
         </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto scrollbar-none py-3 -mx-4 px-4">
         <button onClick={() => setActiveCat("Todas")} className="flex-shrink-0 px-4 py-2 rounded-full text-sm border transition"
-          style={activeCat === "Todas" ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
+          style={activeCat === "Todas" ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" } : { background: "transparent", color: "#4A4760", borderColor: "#D9D5E6" }}>
           <T k="catalogo.todas" />
         </button>
         {categorias.map((c) => (
           <button key={c} onClick={() => setActiveCat(c)} className="flex-shrink-0 px-4 py-2 rounded-full text-sm border transition"
-            style={activeCat === c ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
+            style={activeCat === c ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" } : { background: "transparent", color: "#4A4760", borderColor: "#D9D5E6" }}>
             <Editable onEditar={() => acciones.categoria(c)} titulo="Renombrar o eliminar categoría">{c}</Editable>
           </button>
         ))}
@@ -1101,13 +1108,16 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
         )}
       </div>
 
-      <div className="pt-4 pb-2">
-        <T k="catalogo.titulo" as="h2" className="font-display text-3xl block" />
-        <T k="catalogo.subtitulo" as="p" className="text-sm mt-1 block" style={{ color: "#9A8F80" }} />
+      <div className="pt-8 pb-2 grid gap-3 sm:grid-cols-2 sm:gap-10 sm:items-end">
+        <div>
+          <T k="catalogo.etiqueta" as="p" className="etiqueta-seccion block" />
+          <T k="catalogo.titulo" as="h2" className="font-display text-3xl sm:text-4xl leading-[1.05] mt-1 block" />
+        </div>
+        <T k="catalogo.subtitulo" as="p" className="text-[15px] leading-relaxed block" style={{ color: "#4A4760" }} />
       </div>
 
       {loading ? (
-        <T k="catalogo.cargando" as="div" className="py-20 text-center text-sm block" style={{ color: "#B7ACA0" }} />
+        <T k="catalogo.cargando" as="div" className="py-20 text-center text-sm block" style={{ color: "#A9A6BA" }} />
       ) : (
         <>
           {total === 0 && !editando ? (
@@ -1117,7 +1127,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
           ) : (
             <div className={`${GRID_TARJETAS[tam] || GRID_TARJETAS.normal} pt-4`}>
               {editando && (
-                <button type="button" onClick={acciones.nuevo} className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 text-sm p-4" style={{ borderColor: "#E3A9B4", color: "var(--colorAcento)", minHeight: 160 }}>
+                <button type="button" onClick={acciones.nuevo} className="rounded-[26px] border-2 border-dashed flex flex-col items-center justify-center gap-2 text-sm p-4" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)", minHeight: 160 }}>
                   <Plus size={20} /> Agregar producto
                 </button>
               )}
@@ -1141,12 +1151,23 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
   const { t, editando } = useEdicion();
   const [added, setAdded] = useState(false);
   const [showLoc, setShowLoc] = useState(false);
+  const boton = compacto ? "w-9 h-9" : "w-11 h-11";
   return (
-    <div className="rounded-2xl overflow-hidden border flex flex-col" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
-      <div className="relative flex items-center justify-center" style={{ background: "#EFE7DB", aspectRatio: aspecto }}>
-        {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={22} color="#C6BBAC" />}
+    <div className="tarjeta-producto flex flex-col">
+      <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${compacto ? "rounded-[18px]" : "rounded-[26px]"}`} style={{ background: "#EEEDF3", aspectRatio: aspecto }}>
+        {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={22} color="#BDBACC" />}
+        {/* Nombre y categoría sobre la foto, como en un catálogo editorial */}
+        <div className={`absolute inset-x-0 top-0 ${compacto ? "p-2.5 pr-8" : "p-3 pr-9 sm:p-4 sm:pr-10"} pointer-events-none`}
+          style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.6) 60%, rgba(255,255,255,0))" }}>
+          <div className="pointer-events-auto">
+            <Editable as="p" className={`font-display ${compacto ? "text-sm" : "text-[15px] sm:text-lg"} leading-tight line-clamp-2`} style={{ color: "#17152B" }} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
+            <Editable as="p" className="text-[10px] mt-0.5" style={{ color: "#4A4760" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
+              {p.categoria || (editando ? t("dash.sinCategoria") : "")}
+            </Editable>
+          </div>
+        </div>
         {editando && (
-          <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.88)", color: "#6B5B52" }}>
+          <span className="absolute bottom-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.9)", color: "#4A4760" }}>
             {t("prod.stock", { n: p.cantidad })}
           </span>
         )}
@@ -1155,55 +1176,55 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
           <>
             <button
               onClick={(e) => { e.stopPropagation(); setShowLoc((v) => !v); }}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
-              style={{ background: "rgba(255,255,255,0.75)", backdropFilter: "blur(2px)" }}
+              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
+              style={{ background: "rgba(255,255,255,0.85)" }}
               aria-label={t("tarjeta.info")} title={t("tarjeta.info")}
             >
-              <Info size={13} color="#6B5B52" />
+              <Info size={13} color="#4A4760" />
             </button>
             {showLoc && (
               <div
                 onClick={(e) => { e.stopPropagation(); setShowLoc(false); }}
                 className="absolute inset-0 flex items-center justify-center p-3 cursor-pointer"
-                style={{ background: "rgba(43,35,32,0.55)" }}
+                style={{ background: "rgba(23,21,43,0.55)" }}
               >
-                <div className="rounded-xl px-3 py-2.5 shadow-lg text-center w-full" style={{ background: "#F7F3EC" }}>
+                <div className="rounded-xl px-3 py-2.5 shadow-lg text-center w-full" style={{ background: "#F6F5FA" }}>
                   <T k="tarjeta.ubicacion" as="p" className="text-[9px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
-                  <p className="text-xs font-medium mt-0.5" style={{ color: "#2B2320" }}>{p.ubicacion}</p>
+                  <p className="text-xs font-medium mt-0.5" style={{ color: "#17152B" }}>{p.ubicacion}</p>
                 </div>
               </div>
             )}
           </>
         )}
       </div>
-      <div className={`${compacto ? "p-2" : "p-3"} flex flex-col flex-1`}>
-        <Editable as="p" className="text-[10px] tracking-widest uppercase" style={{ color: "var(--colorAcento)" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
-          {p.categoria || (editando ? t("dash.sinCategoria") : "")}
-        </Editable>
-        <Editable as="p" className={`${compacto ? "text-xs" : "text-sm"} font-medium leading-snug mt-0.5 line-clamp-2`} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
-        {(p.talla || p.color) && <Editable as="p" className="text-[11px] mt-0.5" style={{ color: "#9A8F80" }} onEditar={acciones.form} titulo="Editar producto">{detalleDe(p)}</Editable>}
-        {(p.material || p.grupo) && <Editable as="p" className="text-[11px]" style={{ color: "#B7ACA0" }} onEditar={acciones.form} titulo="Editar producto">{[p.material, p.grupo].filter(Boolean).join(" · ")}</Editable>}
-        <div className="flex items-center justify-between mt-auto pt-2 gap-1">
-          <Editable as="span" className={`font-display ${compacto ? "text-lg" : "text-2xl"} leading-none`} style={{ color: "#2B2320" }} onEditar={acciones.precio} titulo="Editar precio">{money(p.precioVenta)}</Editable>
-          {editando ? (
-            <button onClick={acciones.form} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--colorAcento)", color: "#fff" }} aria-label="Editar producto" title="Editar todos los datos">
-              <Pencil size={14} />
-            </button>
-          ) : (
-            <button onClick={() => { if (onAdd()) { setAdded(true); setTimeout(() => setAdded(false), 1200); } }}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0"
-              style={added ? { background: "#4CAF50", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }} aria-label={t("tarjeta.agregar")}>
-              {added ? <Check size={15} /> : <Plus size={15} />}
-            </button>
-          )}
-        </div>
+
+      {/* Botón circular que monta sobre el borde inferior de la foto */}
+      <div className={`relative z-10 flex justify-center pointer-events-none [&>*]:pointer-events-auto ${compacto ? "-mt-[18px]" : "-mt-[22px]"}`}>
+        {editando ? (
+          <button onClick={acciones.form} className={`${boton} rounded-full flex items-center justify-center`} style={{ background: "var(--colorAcento)", color: "#fff", boxShadow: "0 0 0 4px var(--colorFondo)" }} aria-label="Editar producto" title="Editar todos los datos">
+            <Pencil size={15} />
+          </button>
+        ) : (
+          <button onClick={() => { if (onAdd()) { setAdded(true); setTimeout(() => setAdded(false), 1200); } }}
+            className={`${boton} rounded-full flex items-center justify-center transition hover:scale-105`}
+            style={{ ...(added ? { background: "#2F8542", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }), boxShadow: "0 0 0 4px var(--colorFondo)" }}
+            aria-label={t("tarjeta.agregar")} title={t("tarjeta.agregar")}>
+            {added ? <Check size={16} /> : <ArrowUpRight size={compacto ? 15 : 18} />}
+          </button>
+        )}
+      </div>
+
+      <div className={`text-center ${compacto ? "pt-1" : "pt-1.5"} px-1`}>
+        <Editable as="span" className={`font-display ${compacto ? "text-base" : "text-xl"} leading-none`} style={{ color: "#17152B" }} onEditar={acciones.precio} titulo="Editar precio">{money(p.precioVenta)}</Editable>
+        {(p.talla || p.color) && <Editable as="p" className="text-[11px] mt-0.5" style={{ color: "#8C89A0" }} onEditar={acciones.form} titulo="Editar producto">{detalleDe(p)}</Editable>}
+        {(p.material || p.grupo) && <Editable as="p" className="text-[11px]" style={{ color: "#A9A6BA" }} onEditar={acciones.form} titulo="Editar producto">{[p.material, p.grupo].filter(Boolean).join(" · ")}</Editable>}
       </div>
     </div>
   );
 }
 
 function EmptyState({ k }) {
-  return <div className="py-16 text-center"><T k={k} as="p" className="font-display text-xl block" style={{ color: "#9A8F80" }} /></div>;
+  return <div className="py-16 text-center"><T k={k} as="p" className="font-display text-xl block" style={{ color: "#8C89A0" }} /></div>;
 }
 
 // ---------------------------------------------------------------------------
@@ -1330,17 +1351,17 @@ function Dashboard({ products, onExport }) {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Inventario por categoría */}
         <Panel title={<T k="dash.porCategoria" />} action={
-          <button onClick={onExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+          <button onClick={onExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}>
             <Download size={12} /> <T k="dash.excel" enBoton />
           </button>
         }>
           {d.porCategoria.length === 0 ? (
-            <T k="dash.sinDatos" as="p" className="text-sm py-6 text-center block" style={{ color: "#B7ACA0" }} />
+            <T k="dash.sinDatos" as="p" className="text-sm py-6 text-center block" style={{ color: "#A9A6BA" }} />
           ) : (
             <div className="overflow-x-auto -mx-1">
               <table className="w-full text-xs">
                 <thead>
-                  <tr style={{ color: "#9A8F80" }}>
+                  <tr style={{ color: "#8C89A0" }}>
                     <th className="text-left font-medium pb-2 px-1"><T k="dash.colCategoria" /></th>
                     <th className="text-right font-medium pb-2 px-1"><T k="dash.colPiezas" /></th>
                     <th className="text-right font-medium pb-2 px-1"><T k="dash.colInversion" /></th>
@@ -1350,11 +1371,11 @@ function Dashboard({ products, onExport }) {
                 </thead>
                 <tbody>
                   {d.porCategoria.map((c) => (
-                    <tr key={c.nombre} className="border-t" style={{ borderColor: "#F1EBE0" }}>
+                    <tr key={c.nombre} className="border-t" style={{ borderColor: "#EEECF3" }}>
                       <td className="py-2.5 px-1 font-medium">{c.nombre}</td>
-                      <td className="py-2.5 px-1 text-right" style={{ color: "#6B5B52" }}>{c.piezas}</td>
-                      <td className="py-2.5 px-1 text-right" style={{ color: "#9A8F80" }}>{money(c.inversion)}</td>
-                      <td className="py-2.5 px-1 text-right" style={{ color: "#6B5B52" }}>{money(c.venta)}</td>
+                      <td className="py-2.5 px-1 text-right" style={{ color: "#4A4760" }}>{c.piezas}</td>
+                      <td className="py-2.5 px-1 text-right" style={{ color: "#8C89A0" }}>{money(c.inversion)}</td>
+                      <td className="py-2.5 px-1 text-right" style={{ color: "#4A4760" }}>{money(c.venta)}</td>
                       <td className="py-2.5 px-1 text-right font-medium" style={{ color: c.utilidad >= 0 ? "#2F8542" : "#B23B3B" }}>{money(c.utilidad)}</td>
                     </tr>
                   ))}
@@ -1362,7 +1383,7 @@ function Dashboard({ products, onExport }) {
               </table>
             </div>
           )}
-          <div className="flex items-center gap-2 pt-3 mt-1 border-t text-xs" style={{ borderColor: "#F1EBE0", color: "#9A8F80" }}>
+          <div className="flex items-center gap-2 pt-3 mt-1 border-t text-xs" style={{ borderColor: "#EEECF3", color: "#8C89A0" }}>
             <Package size={13} /> <T k="dash.totalPiezas" /> <strong style={{ color: "var(--colorAcento)" }}>{d.totalPiezas}</strong>
           </div>
         </Panel>
@@ -1371,12 +1392,12 @@ function Dashboard({ products, onExport }) {
         <Panel title={<T k="dash.temporalidad" />} icon={<Tag size={15} color="var(--colorAcento)" />}>
           {d.porGrupo.length === 0 ? (
             <div className="py-10 text-center">
-              <T k="dash.temporalidadVacia" as="p" className="text-sm block" style={{ color: "#B7ACA0" }} />
+              <T k="dash.temporalidadVacia" as="p" className="text-sm block" style={{ color: "#A9A6BA" }} />
             </div>
           ) : (
             <table className="w-full text-xs">
               <thead>
-                <tr style={{ color: "#9A8F80" }}>
+                <tr style={{ color: "#8C89A0" }}>
                   <th className="text-left font-medium pb-2 px-1"><T k="dash.colTemporada" /></th>
                   <th className="text-right font-medium pb-2 px-1"><T k="dash.colPiezas" /></th>
                   <th className="text-right font-medium pb-2 px-1"><T k="dash.colValorVenta" /></th>
@@ -1385,9 +1406,9 @@ function Dashboard({ products, onExport }) {
               </thead>
               <tbody>
                 {d.porGrupo.map((g) => (
-                  <tr key={g.nombre} className="border-t" style={{ borderColor: "#F1EBE0" }}>
+                  <tr key={g.nombre} className="border-t" style={{ borderColor: "#EEECF3" }}>
                     <td className="py-2.5 px-1 font-medium">{g.nombre}</td>
-                    <td className="py-2.5 px-1 text-right" style={{ color: "#6B5B52" }}>{g.piezas}</td>
+                    <td className="py-2.5 px-1 text-right" style={{ color: "#4A4760" }}>{g.piezas}</td>
                     <td className="py-2.5 px-1 text-right" style={{ color: "var(--colorAcento)" }}>{money(g.venta)}</td>
                     <td className="py-2.5 px-1 text-right font-medium" style={{ color: g.utilidad >= 0 ? "#2F8542" : "#B23B3B" }}>{money(g.utilidad)}</td>
                   </tr>
@@ -1402,18 +1423,18 @@ function Dashboard({ products, onExport }) {
       <Panel title={<T k="dash.reporte" />} icon={<BarChart3 size={15} color="var(--colorAcento)" />}>
         <div className="flex flex-wrap items-end gap-2 mb-4">
           <div>
-            <T k="dash.desde" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+            <T k="dash.desde" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
             <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)}
-              className="block rounded-lg border px-2.5 py-1.5 text-xs mt-0.5" style={{ borderColor: "#E4DDD1", background: "#fff" }} />
+              className="block rounded-lg border px-2.5 py-1.5 text-xs mt-0.5" style={{ borderColor: "#E3E0EC", background: "#fff" }} />
           </div>
           <div>
-            <T k="dash.hasta" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+            <T k="dash.hasta" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
             <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)}
-              className="block rounded-lg border px-2.5 py-1.5 text-xs mt-0.5" style={{ borderColor: "#E4DDD1", background: "#fff" }} />
+              className="block rounded-lg border px-2.5 py-1.5 text-xs mt-0.5" style={{ borderColor: "#E3E0EC", background: "#fff" }} />
           </div>
           <div className="flex gap-1.5">
             {[["dash.rango7", 7], ["dash.rango30", 30], ["dash.rango90", 90]].map(([k, n]) => (
-              <button key={n} onClick={() => rangoRapido(n)} className="text-[11px] px-2.5 py-1.5 rounded-full" style={{ background: "#EFE2DE", color: "#6B5B52" }}><T k={k} enBoton /></button>
+              <button key={n} onClick={() => rangoRapido(n)} className="text-[11px] px-2.5 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}><T k={k} enBoton /></button>
             ))}
           </div>
         </div>
@@ -1427,16 +1448,16 @@ function Dashboard({ products, onExport }) {
         <SalesChart dias={reporte.dias} />
 
         {reporte.ventas.length === 0 ? (
-          <T k="dash.sinVentas" as="p" className="text-sm py-6 text-center block" style={{ color: "#B7ACA0" }} />
+          <T k="dash.sinVentas" as="p" className="text-sm py-6 text-center block" style={{ color: "#A9A6BA" }} />
         ) : (
-          <div className="mt-4 border-t pt-3" style={{ borderColor: "#F1EBE0" }}>
-            <T k="dash.detalle" vars={{ n: reporte.ventas.length }} as="p" className="text-[10px] uppercase tracking-wide mb-2 block" style={{ color: "#9A8F80" }} />
+          <div className="mt-4 border-t pt-3" style={{ borderColor: "#EEECF3" }}>
+            <T k="dash.detalle" vars={{ n: reporte.ventas.length }} as="p" className="text-[10px] uppercase tracking-wide mb-2 block" style={{ color: "#8C89A0" }} />
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {reporte.ventas.map((v) => (
-                <div key={`${v.productoId}-${v.id}`} className="flex items-center justify-between gap-3 text-xs py-1.5 border-b last:border-0" style={{ borderColor: "#F7F3EC" }}>
+                <div key={`${v.productoId}-${v.id}`} className="flex items-center justify-between gap-3 text-xs py-1.5 border-b last:border-0" style={{ borderColor: "#F6F5FA" }}>
                   <div className="min-w-0">
                     <p className="font-medium truncate">{v.nombre}</p>
-                    <p style={{ color: "#9A8F80" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })}</p>
+                    <p style={{ color: "#8C89A0" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })}</p>
                   </div>
                   <span className="font-medium flex-shrink-0" style={{ color: "var(--colorAcento)" }}>{money(v.precio * v.qty)}</span>
                 </div>
@@ -1454,22 +1475,22 @@ function SalesChart({ dias }) {
   const max = Math.max(...dias.map((d) => d.monto), 1);
   const compacto = dias.length > 14;
   return (
-    <div className="rounded-xl p-3" style={{ background: "#FBF8F3" }}>
+    <div className="rounded-xl p-3" style={{ background: "#F7F6FB" }}>
       <div className="flex items-end gap-1 h-32">
         {dias.map((d, i) => (
           <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative min-w-0">
             {d.monto > 0 && !compacto && (
-              <span className="text-[9px] mb-1" style={{ color: "#9A8F80" }}>{money(d.monto)}</span>
+              <span className="text-[9px] mb-1" style={{ color: "#8C89A0" }}>{money(d.monto)}</span>
             )}
             <div className="w-full rounded-t transition-all"
-              style={{ height: `${Math.max(d.monto > 0 ? 4 : 1, (d.monto / max) * 100)}%`, background: d.monto > 0 ? "#E3A9B4" : "#EFE7DB", minHeight: 2 }}
+              style={{ height: `${Math.max(d.monto > 0 ? 4 : 1, (d.monto / max) * 100)}%`, background: d.monto > 0 ? "#B9A7DD" : "#EEEDF3", minHeight: 2 }}
               title={`${d.fecha}: ${money(d.monto)}`} />
           </div>
         ))}
       </div>
       <div className="flex gap-1 mt-1.5">
         {dias.map((d, i) => (
-          <span key={i} className="flex-1 text-center text-[8px] truncate" style={{ color: "#B7ACA0" }}>
+          <span key={i} className="flex-1 text-center text-[8px] truncate" style={{ color: "#A9A6BA" }}>
             {compacto ? (i % Math.ceil(dias.length / 8) === 0 ? d.fecha : "") : d.etiqueta}
           </span>
         ))}
@@ -1480,9 +1501,9 @@ function SalesChart({ dias }) {
 
 function Panel({ title, icon, action, children }) {
   return (
-    <div className="rounded-2xl border p-4" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
+    <div className="rounded-2xl border p-4" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
       <div className="flex items-center justify-between mb-3 gap-2">
-        <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#6B5B52" }}>{title}</h3>
+        <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#4A4760" }}>{title}</h3>
         {action || icon}
       </div>
       {children}
@@ -1492,12 +1513,12 @@ function Panel({ title, icon, action, children }) {
 
 function KpiCard({ icon, label, value, sub }) {
   return (
-    <div className="rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: "#F0E4E4", background: "#FDF7F5" }}>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#F6E4E4", color: "var(--colorAcento)" }}>{icon}</div>
+    <div className="rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: "#E8E1F5", background: "#F6F2FC" }}>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#ECE4F7", color: "var(--colorAcento)" }}>{icon}</div>
       <div className="min-w-0">
-        <p className="text-[11px] leading-tight" style={{ color: "#9A8F80" }}>{label}</p>
+        <p className="text-[11px] leading-tight" style={{ color: "#8C89A0" }}>{label}</p>
         <p className="font-display text-2xl leading-tight mt-0.5">{value}</p>
-        <p className="text-[10px] mt-0.5" style={{ color: "#B7ACA0" }}>{sub}</p>
+        <p className="text-[10px] mt-0.5" style={{ color: "#A9A6BA" }}>{sub}</p>
       </div>
     </div>
   );
@@ -1505,9 +1526,9 @@ function KpiCard({ icon, label, value, sub }) {
 
 function MiniStat({ label, value, big, color }) {
   return (
-    <div className="rounded-xl p-3" style={{ background: "#FBF8F3" }}>
-      <p className="text-[10px]" style={{ color: "#9A8F80" }}>{label}</p>
-      <p className={`font-display ${big ? "text-2xl" : "text-xl"} leading-tight mt-0.5`} style={{ color: color || "#2B2320" }}>{value}</p>
+    <div className="rounded-xl p-3" style={{ background: "#F7F6FB" }}>
+      <p className="text-[10px]" style={{ color: "#8C89A0" }}>{label}</p>
+      <p className={`font-display ${big ? "text-2xl" : "text-xl"} leading-tight mt-0.5`} style={{ color: color || "#17152B" }}>{value}</p>
     </div>
   );
 }
@@ -1581,32 +1602,32 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 
       {/* Búsqueda inteligente + filtros */}
       <div className="relative mb-2">
-        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" color="#B7ACA0" />
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" color="#A9A6BA" />
         <input value={q} onChange={(e) => setQ(e.target.value)}
           placeholder={t("prod.buscarPh")}
           className="w-full rounded-full border pl-10 pr-4 py-2.5 text-sm outline-none"
-          style={{ borderColor: "#E4DDD1", background: "#fff" }} />
+          style={{ borderColor: "#E3E0EC", background: "#fff" }} />
         <EditBadge k="prod.buscarPh" etiqueta="Ejemplo" className="absolute right-3 top-1/2 -translate-y-1/2" />
       </div>
 
       <div className="flex items-center justify-between gap-2 mb-3">
         <button onClick={() => setAbierto((v) => !v)}
           className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full"
-          style={abierto || activos ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#6B5B52", border: "1px solid #E4DDD1" }}>
+          style={abierto || activos ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#4A4760", border: "1px solid #E3E0EC" }}>
           <Filter size={13} /> <T k="prod.filtros" enBoton />{activos > 0 ? ` (${activos})` : ""}
         </button>
-        <T k="prod.conteo" vars={{ n: lista.length, total: products.length }} as="span" className="text-xs" style={{ color: "#9A8F80" }} />
+        <T k="prod.conteo" vars={{ n: lista.length, total: products.length }} as="span" className="text-xs" style={{ color: "#8C89A0" }} />
       </div>
 
       {abierto && (
-        <div className="rounded-2xl border p-4 mb-3 space-y-3" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
+        <div className="rounded-2xl border p-4 mb-3 space-y-3" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
           <div>
-            <T k="prod.estado" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+            <T k="prod.estado" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
             <div className="flex gap-1.5 mt-1">
               {[["todos", "prod.estadoTodos"], ["disponible", "prod.estadoDisponible"], ["agotado", "prod.estadoAgotado"], ["oculto", "prod.estadoOculto"]].map(([v, k]) => (
                 <button key={v} onClick={() => setF((prev) => ({ ...prev, estado: v }))}
                   className="text-[11px] px-2 py-1.5 rounded-full flex-1"
-                  style={f.estado === v ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#F7F3EC", color: "#6B5B52" }}><T k={k} enBoton /></button>
+                  style={f.estado === v ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#F6F5FA", color: "#4A4760" }}><T k={k} enBoton /></button>
               ))}
             </div>
           </div>
@@ -1620,17 +1641,17 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <T k="prod.compraDesde" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+              <T k="prod.compraDesde" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
               <input type="date" value={f.compraDesde} onChange={set("compraDesde")} className={inputCls} style={inputStyle} />
             </div>
             <div>
-              <T k="prod.compraHasta" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+              <T k="prod.compraHasta" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
               <input type="date" value={f.compraHasta} onChange={set("compraHasta")} className={inputCls} style={inputStyle} />
             </div>
           </div>
 
           <div>
-            <T k="prod.ordenar" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+            <T k="prod.ordenar" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
             <select value={f.orden} onChange={set("orden")} className={inputCls} style={inputStyle}>
               <option value="reciente">{t("prod.ordenReciente")}</option>
               <option value="antiguos">{t("prod.ordenAntiguos")}</option>
@@ -1642,14 +1663,14 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 
           <button onClick={() => { setF(FILTROS_VACIOS); setQ(""); }}
             className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium"
-            style={{ background: "#F7F3EC", color: "#6B5B52" }}>
+            style={{ background: "#F6F5FA", color: "#4A4760" }}>
             <RotateCcw size={12} /> <T k="prod.limpiar" enBoton />
           </button>
         </div>
       )}
 
       {loading ? (
-        <T k="prod.cargando" as="div" className="py-16 text-center text-sm block" style={{ color: "#B7ACA0" }} />
+        <T k="prod.cargando" as="div" className="py-16 text-center text-sm block" style={{ color: "#A9A6BA" }} />
       ) : products.length === 0 ? (
         <EmptyState k="prod.vacio" />
       ) : lista.length === 0 ? (
@@ -1674,28 +1695,28 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
   const ult = ultimaVenta(p);
   const vendidas = piezasVendidas(p);
   return (
-    <div className="rounded-xl border p-2.5" style={{ borderColor: "#E9E1D4", background: "#fff", opacity: agotado || p.oculto ? 0.72 : 1 }}>
+    <div className="rounded-xl border p-2.5" style={{ borderColor: "#E6E3EE", background: "#fff", opacity: agotado || p.oculto ? 0.72 : 1 }}>
       <div className="flex items-center gap-3">
-        <Editable as="div" onEditar={() => onFoto(p)} titulo="Cambiar o recortar foto" className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EFE7DB" }}>
-          {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" /> : <ImageOff size={16} color="#C6BBAC" />}
+        <Editable as="div" onEditar={() => onFoto(p)} titulo="Cambiar o recortar foto" className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EEEDF3" }}>
+          {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" /> : <ImageOff size={16} color="#BDBACC" />}
         </Editable>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium truncate">{p.nombre}</p>
-          <p className="text-xs truncate" style={{ color: "#9A8F80" }}>{[p.categoria, money(p.precioVenta), detalleDe(p)].filter(Boolean).join(" · ")}</p>
+          <p className="text-xs truncate" style={{ color: "#8C89A0" }}>{[p.categoria, money(p.precioVenta), detalleDe(p)].filter(Boolean).join(" · ")}</p>
         </div>
         <span className="flex-shrink-0 text-[10px] font-medium px-2.5 py-1.5 rounded-full tracking-wide uppercase"
-          style={agotado ? { background: "#F1EBE0", color: "#8A7F71" } : { background: "#E4F3E6", color: "#2F8542" }}>
+          style={agotado ? { background: "#EEECF3", color: "#7C7990" } : { background: "#E4F3E6", color: "#2F8542" }}>
           {agotado ? t("prod.estadoAgotado") : t("prod.stock", { n: p.cantidad })}
         </span>
-        <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFE2DE" }} aria-label={t("prod.editar")} title={t("prod.editar")}><Pencil size={13} color="#6B5B52" /></button>
+        <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#ECE8F6" }} aria-label={t("prod.editar")} title={t("prod.editar")}><Pencil size={13} color="#4A4760" /></button>
         <button onClick={() => { if (window.confirm(t("prod.confirmarEliminar", { nombre: p.nombre }))) onDelete(p.id); }} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#FBEAEA" }} aria-label={t("prod.eliminar")} title={t("prod.eliminar")}><Trash2 size={13} color="#B23B3B" /></button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 pt-2 border-t text-[11px]" style={{ borderColor: "#F1EBE0", color: "#9A8F80" }}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 pt-2 border-t text-[11px]" style={{ borderColor: "#EEECF3", color: "#8C89A0" }}>
         {dias !== null && (
           <span className="flex items-center gap-1">
             <Clock size={11} />
-            <strong style={{ color: dias > 90 ? "#B23B3B" : "#6B5B52" }}>{dias}</strong> <T k="prod.dias" />
+            <strong style={{ color: dias > 90 ? "#B23B3B" : "#4A4760" }}>{dias}</strong> <T k="prod.dias" />
           </span>
         )}
         {p.fechaCompra && <span className="flex items-center gap-1"><Calendar size={11} /> {fmtDate(dateStrToTs(p.fechaCompra))}</span>}
@@ -1713,21 +1734,21 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
         <button onClick={() => onVender(p)} disabled={agotado} className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full disabled:opacity-40" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
           <Minus size={12} /> <T k="prod.vender" enBoton />
         </button>
-        <button onClick={() => onOcultar(p)} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F7F3EC", color: "#6B5B52" }}>
+        <button onClick={() => onOcultar(p)} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F6F5FA", color: "#4A4760" }}>
           {p.oculto ? <Eye size={12} /> : <EyeOff size={12} />} {t(p.oculto ? "prod.mostrar" : "prod.ocultar")}
         </button>
         {p.ventas.length > 0 && (
-          <button onClick={() => setVerVentas((v) => !v)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F7F3EC", color: "#6B5B52" }}>
+          <button onClick={() => setVerVentas((v) => !v)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F6F5FA", color: "#4A4760" }}>
             {t("prod.verVentas", { n: p.ventas.length })} {verVentas ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
         )}
       </div>
 
       {verVentas && p.ventas.length > 0 && (
-        <div className="mt-2 rounded-lg p-2 space-y-1.5" style={{ background: "#FBF8F3" }}>
+        <div className="mt-2 rounded-lg p-2 space-y-1.5" style={{ background: "#F7F6FB" }}>
           {[...p.ventas].sort((a, b) => b.at - a.at).map((v) => (
             <div key={v.id} className="flex items-center justify-between gap-2 text-[11px]">
-              <span style={{ color: "#6B5B52" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })} · <strong>{money((Number(v.precio) || 0) * (Number(v.qty) || 0))}</strong></span>
+              <span style={{ color: "#4A4760" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })} · <strong>{money((Number(v.precio) || 0) * (Number(v.qty) || 0))}</strong></span>
               <button onClick={() => onDeshacer(p, v)} className="flex items-center gap-1 px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: "#FDF4E7", color: "#B0813C" }}>
                 <Undo2 size={11} /> {t("venta.deshacer")}
               </button>
@@ -1743,7 +1764,7 @@ function SelectFiltro({ k, value, onChange, options }) {
   const { t } = useEdicion();
   return (
     <div>
-      <T k={k} as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
+      <T k={k} as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
       <select value={value} onChange={onChange} className={inputCls} style={inputStyle}>
         <option value="">{t("prod.filtroTodas")}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -1755,7 +1776,7 @@ function SelectFiltro({ k, value, onChange, options }) {
 function TabButton({ active, onClick, icon, k }) {
   return (
     <button onClick={onClick} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm transition"
-      style={active ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#6B5B52", border: "1px solid #E4DDD1" }}>
+      style={active ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#4A4760", border: "1px solid #E3E0EC" }}>
       {icon} <T k={k} enBoton />
     </button>
   );
@@ -1783,34 +1804,34 @@ function VentaModal({ p, onCerrar, onRegistrar }) {
   return (
     <Modal onClose={onCerrar} title={<T k="venta.titulo" />}>
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EFE7DB" }}>
-          {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" /> : <ImageOff size={16} color="#C6BBAC" />}
+        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EEEDF3" }}>
+          {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" /> : <ImageOff size={16} color="#BDBACC" />}
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium">{p.nombre}</p>
-          <p className="text-xs" style={{ color: "#9A8F80" }}>{[detalleDe(p), t("venta.disponibles", { n: max })].filter(Boolean).join(" · ")}</p>
+          <p className="text-xs" style={{ color: "#8C89A0" }}>{[detalleDe(p), t("venta.disponibles", { n: max })].filter(Boolean).join(" · ")}</p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <T k="venta.cantidad" as="span" className="text-xs" style={{ color: "#6B5B52" }} />
+          <T k="venta.cantidad" as="span" className="text-xs" style={{ color: "#4A4760" }} />
           <div className="flex items-center gap-2 mt-1">
-            <button type="button" onClick={() => setQty((n) => Math.max(1, n - 1))} className="w-10 h-10 rounded-full border flex items-center justify-center text-lg" style={{ borderColor: "#E4DDD1", background: "#fff" }}>−</button>
+            <button type="button" onClick={() => setQty((n) => Math.max(1, n - 1))} className="w-10 h-10 rounded-full border flex items-center justify-center text-lg" style={{ borderColor: "#E3E0EC", background: "#fff" }}>−</button>
             <span className="w-8 text-center text-lg font-medium">{qty}</span>
-            <button type="button" onClick={() => setQty((n) => Math.min(max, n + 1))} className="w-10 h-10 rounded-full border flex items-center justify-center text-lg" style={{ borderColor: "#E4DDD1", background: "#fff" }}>+</button>
+            <button type="button" onClick={() => setQty((n) => Math.min(max, n + 1))} className="w-10 h-10 rounded-full border flex items-center justify-center text-lg" style={{ borderColor: "#E3E0EC", background: "#fff" }}>+</button>
           </div>
         </div>
         <Field label={<T k="venta.precio" />}>
           <input type="number" min="0" step="any" inputMode="decimal" value={precio} onChange={(e) => setPrecio(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
       </div>
-      <div className="flex items-center justify-between rounded-xl px-3 py-2.5 mt-4" style={{ background: "#EFE7DB" }}>
-        <T k="venta.total" as="span" className="text-xs" style={{ color: "#6B5B52" }} />
+      <div className="flex items-center justify-between rounded-xl px-3 py-2.5 mt-4" style={{ background: "#EEEDF3" }}>
+        <T k="venta.total" as="span" className="text-xs" style={{ color: "#4A4760" }} />
         <span className="font-display text-xl">{money(total)}</span>
       </div>
       {error && <p className="text-xs mt-2" style={{ color: "#B23B3B" }}>{error}</p>}
       <div className="flex gap-3 mt-4">
-        <button type="button" onClick={onCerrar} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>{t("general.cancelar")}</button>
+        <button type="button" onClick={onCerrar} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>{t("general.cancelar")}</button>
         <button type="button" onClick={registrar} disabled={guardando || max < 1} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
           {guardando ? t("form.guardando") : t("venta.registrar")}
         </button>
@@ -1834,18 +1855,18 @@ function DeshacerModal({ p, venta, pin, onCerrar, onConfirmar }) {
     <Modal onClose={onCerrar} title={<T k="venta.deshacerTitulo" />}>
       <div className="rounded-xl p-3 mb-4 flex items-start gap-2.5" style={{ background: "#FDF4E7" }}>
         <ShieldCheck size={16} color="#B0813C" className="flex-shrink-0 mt-0.5" />
-        <p className="text-xs" style={{ color: "#8A7F71" }}>
+        <p className="text-xs" style={{ color: "#7C7990" }}>
           {t("venta.deshacerTexto", { n: venta.qty, nombre: p.nombre, fecha: fmtDateTime(venta.at) })}
         </p>
       </div>
-      <T k="venta.pedirPin" as="p" className="text-sm mb-2 block" style={{ color: "#9A8F80" }} />
+      <T k="venta.pedirPin" as="p" className="text-sm mb-2 block" style={{ color: "#8C89A0" }} />
       <input type="password" inputMode="numeric" autoFocus value={pinIn}
         onChange={(e) => setPinIn(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && confirmar()}
-        className="w-full rounded-xl border px-4 py-3 text-center text-lg tracking-[0.4em]" style={{ borderColor: "#E4DDD1" }} placeholder="••••" />
+        className="w-full rounded-xl border px-4 py-3 text-center text-lg tracking-[0.4em]" style={{ borderColor: "#E3E0EC" }} placeholder="••••" />
       {error && <p className="text-xs mt-2 text-center" style={{ color: "#B23B3B" }}>{error}</p>}
       <div className="flex gap-3 mt-4">
-        <button onClick={onCerrar} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>{t("general.cancelar")}</button>
+        <button onClick={onCerrar} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>{t("general.cancelar")}</button>
         <button onClick={confirmar} disabled={guardando} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("general.confirmar")}</button>
       </div>
     </Modal>
@@ -1906,7 +1927,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); crearCategoria(); } }}
               placeholder={t("form.nuevaCategoriaPh")} className={inputCls + " mt-0"} style={inputStyle} />
             <button type="button" onClick={crearCategoria} className="px-4 rounded-xl text-sm font-medium flex-shrink-0" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("form.agregarCategoria")}</button>
-            <button type="button" onClick={() => { setNuevaCat(null); setErrorCat(""); }} className="px-3 rounded-xl text-sm flex-shrink-0 border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>×</button>
+            <button type="button" onClick={() => { setNuevaCat(null); setErrorCat(""); }} className="px-3 rounded-xl text-sm flex-shrink-0 border" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>×</button>
           </div>
           {errorCat && <p className="text-xs mt-1" style={{ color: "#B23B3B" }}>{errorCat}</p>}
         </div>
@@ -1928,7 +1949,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
         <Field label={<T k="form.cantidad" />}><input type="number" min="0" step="1" inputMode="numeric" value={form.cantidad} onChange={set("cantidad")} className={inputCls} style={inputStyle} /></Field>
       </div>
       {vendidas > 0 && (
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs" style={{ background: "#EFE7DB", color: "#6B5B52" }}>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs" style={{ background: "#EEEDF3", color: "#4A4760" }}>
           <ShoppingBag size={13} /> {t("form.vendidas", { n: vendidas })}
         </div>
       )}
@@ -1937,28 +1958,28 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
         <Field label={<T k="form.proveedor" />}><input value={form.proveedor || ""} onChange={set("proveedor")} className={inputCls} style={inputStyle} placeholder={t("form.proveedorPh")} /></Field>
       </div>
       {form.fechaCompra && (
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs" style={{ background: "#EFE7DB", color: "#6B5B52" }}>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs" style={{ background: "#EEEDF3", color: "#4A4760" }}>
           <Clock size={13} />
           {t("form.dias", { n: diasEnInventario({ ...form, cantidad: Number(form.cantidad) || 0, createdAt: form.createdAt || Date.now() }) })}
         </div>
       )}
       <div className="grid grid-cols-2 gap-3 items-end">
         <Field label={<T k="form.ubicacion" />}><input value={form.ubicacion} onChange={set("ubicacion")} className={inputCls} style={inputStyle} placeholder={t("form.ubicacionPh")} /></Field>
-        <label className="flex items-center gap-2 text-sm rounded-xl border px-3 py-2.5 cursor-pointer" style={{ borderColor: "#E4DDD1", background: "#fff", color: "#6B5B52" }}>
+        <label className="flex items-center gap-2 text-sm rounded-xl border px-3 py-2.5 cursor-pointer" style={{ borderColor: "#E3E0EC", background: "#fff", color: "#4A4760" }}>
           <input type="checkbox" checked={Boolean(form.oculto)} onChange={(e) => setForm((f) => ({ ...f, oculto: e.target.checked }))} style={{ accentColor: "var(--colorAcento)" }} />
           <T k="form.ocultar" />
         </label>
       </div>
 
       <div>
-        <T k="form.foto" as="span" className="text-xs" style={{ color: "#6B5B52" }} />
+        <T k="form.foto" as="span" className="text-xs" style={{ color: "#4A4760" }} />
         {formImage ? (
           <div className="mt-1 flex items-start gap-3">
-            <div className="w-28 rounded-xl overflow-hidden flex-shrink-0" style={{ background: "#EFE7DB", aspectRatio: aspectoCss(aspecto) }}>
+            <div className="w-28 rounded-xl overflow-hidden flex-shrink-0" style={{ background: "#EEEDF3", aspectRatio: aspectoCss(aspecto) }}>
               <img src={formImage} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={onEditarFoto} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+              <button type="button" onClick={onEditarFoto} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#ECE8F6", color: "#4A4760" }}>
                 <ImagePlus size={13} /> {t("form.recortar")}
               </button>
               <button type="button" onClick={onQuitarFoto} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#FBEAEA", color: "#B23B3B" }}>
@@ -1967,14 +1988,14 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
             </div>
           </div>
         ) : (
-          <button type="button" onClick={onEditarFoto} className="mt-1 w-full rounded-xl border-2 border-dashed py-5 flex items-center justify-center gap-2 text-sm" style={{ borderColor: "#E4DDD1", color: "#6B5B52", background: "#fff" }}>
+          <button type="button" onClick={onEditarFoto} className="mt-1 w-full rounded-xl border-2 border-dashed py-5 flex items-center justify-center gap-2 text-sm" style={{ borderColor: "#E3E0EC", color: "#4A4760", background: "#fff" }}>
             <ImagePlus size={16} /> {t("form.elegirFoto")}
           </button>
         )}
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>{t("form.cancelar")}</button>
+        <button type="button" onClick={onCancel} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>{t("form.cancelar")}</button>
         <button type="submit" disabled={saving} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{saving ? t("form.guardando") : t("form.guardar")}</button>
       </div>
     </form>
@@ -2017,30 +2038,30 @@ function SettingsForm({ settings, onSave, products, onExportBackup, onImportBack
         <button type="submit" className="w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("config.guardar")}</button>
       </form>
 
-      <div className="pt-2 border-t" style={{ borderColor: "#E9E1D4" }}>
+      <div className="pt-2 border-t" style={{ borderColor: "#E6E3EE" }}>
         <T k="config.compartirTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
-        <T k="config.compartirTexto" as="p" className="text-xs mb-3 block" style={{ color: "#9A8F80" }} />
+        <T k="config.compartirTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
         <div className="flex gap-2 mb-3">
           <input value={shareUrl} onChange={(e) => setShareUrl(e.target.value)} className={inputCls + " mt-0"} style={inputStyle} placeholder="https://boutique-martita.vercel.app" />
-          <button type="button" onClick={copyLink} className="px-4 rounded-xl text-xs flex-shrink-0" style={{ background: "#EFE2DE", color: "#6B5B52" }}>{copied ? t("config.copiado") : t("config.copiar")}</button>
+          <button type="button" onClick={copyLink} className="px-4 rounded-xl text-xs flex-shrink-0" style={{ background: "#ECE8F6", color: "#4A4760" }}>{copied ? t("config.copiado") : t("config.copiar")}</button>
         </div>
         {shareUrl && (
-          <div className="flex flex-col items-center gap-2 py-3 rounded-xl" style={{ background: "#fff", border: "1px solid #E9E1D4" }}>
+          <div className="flex flex-col items-center gap-2 py-3 rounded-xl" style={{ background: "#fff", border: "1px solid #E6E3EE" }}>
             <img src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(shareUrl)}`} alt="Código QR del catálogo" width={180} height={180} />
-            <T k="config.qrAyuda" as="p" className="text-[11px]" style={{ color: "#9A8F80" }} />
+            <T k="config.qrAyuda" as="p" className="text-[11px]" style={{ color: "#8C89A0" }} />
           </div>
         )}
       </div>
 
       <CatalogosListos importados={settings.importados} totalProductos={products.length} pin={settings.pin} onImportar={onImportarPaquete} />
 
-      <div className="pt-2 border-t" style={{ borderColor: "#E9E1D4" }}>
+      <div className="pt-2 border-t" style={{ borderColor: "#E6E3EE" }}>
         <T k="config.respaldoTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
-        <T k="config.respaldoTexto" as="p" className="text-xs mb-3 block" style={{ color: "#9A8F80" }} />
-        <button type="button" onClick={onExportBackup} className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium mb-2" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+        <T k="config.respaldoTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
+        <button type="button" onClick={onExportBackup} className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium mb-2" style={{ background: "#ECE8F6", color: "#4A4760" }}>
           <Download size={14} /> {t("config.descargar", { n: products.length })}
         </button>
-        <label className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium cursor-pointer" style={{ border: "1px solid #E4DDD1", color: "#6B5B52" }}>
+        <label className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium cursor-pointer" style={{ border: "1px solid #E3E0EC", color: "#4A4760" }}>
           {importing ? t("config.restaurando") : t("config.restaurar")}
           <input ref={restoreInputRef} type="file" accept="application/json" onChange={handleRestoreFile} className="hidden" disabled={importing} />
         </label>
@@ -2065,9 +2086,9 @@ function CatalogosListos({ importados, totalProductos, pin, onImportar }) {
   }, []);
   if (!paquetes || paquetes.length === 0) return null;
   return (
-    <div className="pt-2 border-t" style={{ borderColor: "#E9E1D4" }}>
+    <div className="pt-2 border-t" style={{ borderColor: "#E6E3EE" }}>
       <T k="config.importarTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
-      <T k="config.importarTexto" as="p" className="text-xs mb-3 block" style={{ color: "#9A8F80" }} />
+      <T k="config.importarTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
       <div className="space-y-2">
         {paquetes.map((pq) => (
           <PaqueteImportable key={pq.id} pq={pq} fecha={importados?.[pq.id]} totalProductos={totalProductos} pin={pin} onImportar={onImportar} />
@@ -2099,18 +2120,18 @@ function PaqueteImportable({ pq, fecha, totalProductos, pin, onImportar }) {
   };
 
   return (
-    <div className="rounded-xl border p-3" style={{ borderColor: "#E9E1D4", background: "#fff" }}>
+    <div className="rounded-xl border p-3" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
       <div className="flex items-center gap-3">
         {pq.portada && <img src={pq.portada} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />}
         <div className="min-w-0">
           <p className="text-sm font-medium">{pq.nombre}</p>
-          <p className="text-[11px]" style={{ color: "#9A8F80" }}>
+          <p className="text-[11px]" style={{ color: "#8C89A0" }}>
             {pq.productos} productos{pq.detalle ? ` · ${pq.detalle}` : ""}{fecha ? ` · ${t("config.importado", { fecha: fmtDate(fecha) })}` : ""}
           </p>
         </div>
       </div>
       {totalProductos > 0 && (
-        <label className="flex items-start gap-2 text-xs mt-3 cursor-pointer" style={{ color: "#6B5B52" }}>
+        <label className="flex items-start gap-2 text-xs mt-3 cursor-pointer" style={{ color: "#4A4760" }}>
           <input type="checkbox" checked={reemplazar} onChange={(e) => setReemplazar(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--colorAcento)" }} />
           <T k="config.importarReemplazar" />
         </label>
@@ -2146,9 +2167,9 @@ function VaciarCatalogo({ total, pin, onVaciar }) {
   };
 
   return (
-    <div className="pt-2 border-t" style={{ borderColor: "#E9E1D4" }}>
+    <div className="pt-2 border-t" style={{ borderColor: "#E6E3EE" }}>
       <T k="config.vaciarTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
-      <T k="config.vaciarTexto" as="p" className="text-xs mb-3 block" style={{ color: "#9A8F80" }} />
+      <T k="config.vaciarTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
       {!abierto ? (
         <button type="button" onClick={() => { setAbierto(true); setMsg(""); }} disabled={total === 0}
           className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium disabled:opacity-50" style={{ background: "#FBEAEA", color: "#B23B3B" }}>
@@ -2160,7 +2181,7 @@ function VaciarCatalogo({ total, pin, onVaciar }) {
             onKeyDown={(e) => e.key === "Enter" && vaciar()}
             placeholder={t("config.pinConfirmar")} className={inputCls + " mt-0"} style={inputStyle} />
           <div className="flex gap-2">
-            <button type="button" onClick={() => { setAbierto(false); setPinIn(""); setMsg(""); }} className="flex-1 rounded-xl py-2.5 text-sm border" style={{ borderColor: "#E4DDD1", color: "#6B5B52", background: "#fff" }}>{t("general.cancelar")}</button>
+            <button type="button" onClick={() => { setAbierto(false); setPinIn(""); setMsg(""); }} className="flex-1 rounded-xl py-2.5 text-sm border" style={{ borderColor: "#E3E0EC", color: "#4A4760", background: "#fff" }}>{t("general.cancelar")}</button>
             <button type="button" onClick={vaciar} disabled={estado === "corriendo"} className="flex-1 rounded-xl py-2.5 text-sm font-medium disabled:opacity-60" style={{ background: "#B23B3B", color: "#fff" }}>
               {estado === "corriendo" ? t("config.vaciando") : t("general.confirmar")}
             </button>

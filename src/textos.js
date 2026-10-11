@@ -39,6 +39,7 @@ export const TEXTOS = [
   ["pie.texto", "Texto del pie de página", "Gracias por visitarnos 💕"],
 
   // Catálogo
+  ["catalogo.etiqueta", "Etiqueta pequeña sobre el título del catálogo", "01/ colección"],
   ["catalogo.buscarTitulo", "Texto sobre el buscador", "¿Qué estás buscando?"],
   ["catalogo.buscarPh", "Ejemplo dentro del buscador", "playera + azul + talla M"],
   ["catalogo.todas", "Botón «todas las categorías»", "Todas"],

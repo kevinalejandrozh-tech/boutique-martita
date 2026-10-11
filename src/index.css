@@ -4,7 +4,7 @@
    Modo edición: resaltado de lo que se puede tocar para editar
    --------------------------------------------------------------------------- */
 .editable {
-  outline: 1.5px dashed rgba(178, 92, 107, 0.6);
+  outline: 1.5px dashed rgba(107, 79, 160, 0.6);
   outline-offset: 2px;
   border-radius: 4px;
   cursor: pointer;
@@ -12,7 +12,7 @@
 }
 .editable:hover,
 .editable:focus-visible {
-  background-color: rgba(178, 92, 107, 0.1);
+  background-color: rgba(107, 79, 160, 0.1);
 }
 .editable-vacio {
   opacity: 0.55;
@@ -26,7 +26,7 @@
   height: 16px;
   margin-left: 5px;
   border-radius: 999px;
-  background: #b25c6b;
+  background: #6b4fa0;
   color: #fff;
   vertical-align: middle;
   cursor: pointer;
@@ -40,7 +40,7 @@
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #b25c6b;
+  background: #6b4fa0;
   color: #fff;
   z-index: 1;
 }
@@ -52,7 +52,7 @@
   font-weight: 600;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(43, 35, 32, 0.8);
+  background: rgba(23, 21, 43, 0.8);
   color: #fff;
   backdrop-filter: blur(2px);
   z-index: 1;

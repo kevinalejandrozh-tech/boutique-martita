@@ -244,26 +244,26 @@ export default function ImageEditor({
   };
 
   const chip = (activo) => (activo
-    ? { background: "#2B2320", color: "#F7F3EC", borderColor: "#2B2320" }
-    : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" });
+    ? { background: "#17152B", color: "#F6F5FA", borderColor: "#17152B" }
+    : { background: "#fff", color: "#4A4760", borderColor: "#E3E0EC" });
 
   return (
     <div className="fixed inset-0 flex items-end md:items-center justify-center" style={{ zIndex: 70 }}>
-      <div className="absolute inset-0" style={{ background: "rgba(43,35,32,0.55)" }} onClick={procesando ? undefined : onCancelar} />
-      <div className="relative w-full md:max-w-2xl h-[100dvh] md:h-auto md:max-h-[92vh] flex flex-col md:rounded-3xl overflow-hidden" style={{ background: "#F7F3EC" }}>
+      <div className="absolute inset-0" style={{ background: "rgba(23,21,43,0.55)" }} onClick={procesando ? undefined : onCancelar} />
+      <div className="relative w-full md:max-w-2xl h-[100dvh] md:h-auto md:max-h-[92vh] flex flex-col md:rounded-3xl overflow-hidden" style={{ background: "#F6F5FA" }}>
         <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
           <h2 className="font-display text-2xl min-w-0 truncate">{titulo}</h2>
-          <button type="button" onClick={onCancelar} disabled={procesando} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFE2DE" }} aria-label="Cerrar">
-            <X size={15} color="#6B5B52" />
+          <button type="button" onClick={onCancelar} disabled={procesando} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#ECE8F6" }} aria-label="Cerrar">
+            <X size={15} color="#4A4760" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-3">
-          <div className="relative w-full h-[46vh] md:h-[380px] rounded-2xl overflow-hidden" style={{ background: "#2B2320" }}>
+          <div className="relative w-full h-[46vh] md:h-[380px] rounded-2xl overflow-hidden" style={{ background: "#17152B" }}>
             {cargando ? (
-              <div className="absolute inset-0 flex items-center justify-center text-sm" style={{ color: "#E4DDD1" }}>Cargando imagen…</div>
+              <div className="absolute inset-0 flex items-center justify-center text-sm" style={{ color: "#E3E0EC" }}>Cargando imagen…</div>
             ) : !src ? (
-              <button type="button" onClick={() => fileRef.current?.click()} className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm" style={{ color: "#F7F3EC" }}>
+              <button type="button" onClick={() => fileRef.current?.click()} className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm" style={{ color: "#F6F5FA" }}>
                 <ImagePlus size={28} />
                 Elegir foto
               </button>
@@ -287,7 +287,7 @@ export default function ImageEditor({
                 onCropComplete={(_, px) => setArea(px)}
                 onCropSizeChange={setCropSize}
                 onMediaLoaded={(m) => { setMediaSize(m); setNatural({ w: m.naturalWidth, h: m.naturalHeight }); }}
-                style={{ containerStyle: { background: "#2B2320" } }}
+                style={{ containerStyle: { background: "#17152B" } }}
               />
             )}
           </div>
@@ -295,10 +295,10 @@ export default function ImageEditor({
           {src && !cargando && (
             <div className="space-y-3 pt-4">
               <div className="flex items-center gap-3">
-                <ZoomOut size={16} color="#6B5B52" />
+                <ZoomOut size={16} color="#4A4760" />
                 <input type="range" min={0.3} max={5} step={0.01} value={zoom} onChange={(e) => setZoom(Number(e.target.value))}
                   className="flex-1" style={{ accentColor: "#B25C6B" }} aria-label="Acercar o alejar" />
-                <ZoomIn size={16} color="#6B5B52" />
+                <ZoomIn size={16} color="#4A4760" />
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -310,7 +310,7 @@ export default function ImageEditor({
 
               {opcionesAspecto && opcionesAspecto.length > 1 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#9A8F80" }}>Formato del recorte</p>
+                  <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Formato del recorte</p>
                   <div className="flex flex-wrap gap-1.5">
                     {opcionesAspecto.map((a) => (
                       <button key={a} type="button" onClick={() => { setAspSel(a); reiniciar(); }} className="text-xs px-3 py-1.5 rounded-full border" style={chip(aspSel === a)}>
@@ -323,7 +323,7 @@ export default function ImageEditor({
 
               {tamanos.length > 1 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#9A8F80" }}>Tamaño del archivo</p>
+                  <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Tamaño del archivo</p>
                   <div className="flex flex-wrap gap-1.5">
                     {tamanos.map((t, i) => (
                       <button key={t.etiqueta} type="button" onClick={() => setTam(i)} className="text-xs px-3 py-1.5 rounded-full border" style={chip(tam === i)}>
@@ -335,17 +335,17 @@ export default function ImageEditor({
               )}
 
               {extra}
-              {ayuda && <p className="text-[11px]" style={{ color: "#9A8F80" }}>{ayuda}</p>}
+              {ayuda && <p className="text-[11px]" style={{ color: "#8C89A0" }}>{ayuda}</p>}
             </div>
           )}
 
           {error && <p className="text-xs mt-3" style={{ color: "#B23B3B" }}>{error}</p>}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 px-5 py-4 border-t" style={{ borderColor: "#E9E1D4" }}>
+        <div className="flex flex-wrap items-center gap-2 px-5 py-4 border-t" style={{ borderColor: "#E6E3EE" }}>
           <input ref={fileRef} type="file" accept="image/*" onChange={elegirArchivo} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={procesando}
-            className="flex items-center gap-1.5 text-xs px-3 py-2.5 rounded-xl" style={{ background: "#EFE2DE", color: "#6B5B52" }}>
+            className="flex items-center gap-1.5 text-xs px-3 py-2.5 rounded-xl" style={{ background: "#ECE8F6", color: "#4A4760" }}>
             <ImagePlus size={14} /> {src ? "Cambiar foto" : "Elegir foto"}
           </button>
           {onQuitar && (
@@ -355,9 +355,9 @@ export default function ImageEditor({
             </button>
           )}
           <div className="flex-1" />
-          <button type="button" onClick={onCancelar} disabled={procesando} className="text-sm px-4 py-2.5 rounded-xl border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>Cancelar</button>
+          <button type="button" onClick={onCancelar} disabled={procesando} className="text-sm px-4 py-2.5 rounded-xl border" style={{ borderColor: "#E3E0EC", color: "#4A4760" }}>Cancelar</button>
           <button type="button" onClick={aplicar} disabled={!src || !area || procesando || cargando}
-            className="text-sm px-5 py-2.5 rounded-xl font-medium disabled:opacity-50" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+            className="text-sm px-5 py-2.5 rounded-xl font-medium disabled:opacity-50" style={{ background: "#17152B", color: "#F6F5FA" }}>
             {procesando ? "Guardando…" : "Aplicar"}
           </button>
         </div>
