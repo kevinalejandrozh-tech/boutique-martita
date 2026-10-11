@@ -26,16 +26,32 @@ export function IconoCarritoMas({ size = 18 }) {
   );
 }
 
+// Contador − / número / +. El número también se puede escribir a mano.
 function Contador({ valor, min = 1, max, onCambiar, grande }) {
+  const [texto, setTexto] = useState(null); // null = muestra `valor`
   const tam = grande ? "w-11 h-11 text-lg" : "w-8 h-8 text-sm";
+  const fijar = (n) => onCambiar(Math.max(min, Math.min(max, n)));
+  const confirmar = () => {
+    if (texto !== null) {
+      const n = parseInt(texto, 10);
+      fijar(Number.isFinite(n) ? n : valor);
+    }
+    setTexto(null);
+  };
   return (
     <div className="flex items-center gap-2">
-      <button type="button" onClick={() => onCambiar(Math.max(min, valor - 1))} disabled={valor <= min}
+      <button type="button" onClick={() => fijar(valor - 1)} disabled={valor <= min}
         className={`${tam} rounded-full border flex items-center justify-center disabled:opacity-35`} style={{ borderColor: "#E3E0EC", background: "#fff" }} aria-label="Menos">
         <Minus size={grande ? 16 : 13} />
       </button>
-      <span className={`${grande ? "w-10 text-2xl font-display" : "w-6 text-sm font-medium"} text-center`}>{valor}</span>
-      <button type="button" onClick={() => onCambiar(Math.min(max, valor + 1))} disabled={valor >= max}
+      <input type="number" inputMode="numeric" min={min} max={max} step="1" aria-label="Número de piezas"
+        value={texto !== null ? texto : valor}
+        onFocus={(e) => { setTexto(String(valor)); e.target.select(); }}
+        onChange={(e) => setTexto(e.target.value.replace(/[^0-9]/g, ""))}
+        onBlur={confirmar}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
+        className={`${grande ? "w-16 h-11 text-2xl font-display" : "w-10 h-8 text-sm font-medium"} text-center rounded-xl border border-transparent hover:border-[#E3E0EC] focus:border-[#B9A7DD] outline-none bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`} />
+      <button type="button" onClick={() => fijar(valor + 1)} disabled={valor >= max}
         className={`${tam} rounded-full border flex items-center justify-center disabled:opacity-35`} style={{ borderColor: "#E3E0EC", background: "#fff" }} aria-label="Más">
         <Plus size={grande ? 16 : 13} />
       </button>
@@ -75,7 +91,8 @@ export function CantidadModal({ p, maximo, onConfirmar, onCerrar }) {
               <p className="font-display text-xl">{money((Number(p.precioVenta) || 0) * qty)}</p>
             </div>
           </div>
-          <button type="button" onClick={() => onConfirmar(qty)} className="w-full mt-5 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
+          <T k="compra.escribir" as="p" className="text-[11px] mt-1.5 block" style={{ color: "#A9A6BA" }} />
+          <button type="button" onClick={() => onConfirmar(qty)} className="w-full mt-4 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
             <ShoppingCart size={15} /> {t("compra.agregar")}
           </button>
         </>
@@ -157,13 +174,13 @@ export function Checkout({ cart, stockDe, colonias, compra, setCompra, onQty, on
   };
 
   const enviar = async () => {
-    if (!compra.metodo || !colonia) { setError(t("compra.faltaPago")); return; }
+    if (!compra.metodo) { setError(t("compra.faltaPago")); return; }
     setEnviando(true); setError("");
     try {
       const n = await onEnviar({
         nombre: compra.nombre.trim(), telefono: soloDigitos(compra.telefono),
         items, articulos: piezas, ...tot, metodoPago: compra.metodo,
-        coloniaId: colonia.id, colonia: colonia.colonia, municipio: colonia.municipio || "",
+        coloniaId: colonia?.id || "", colonia: colonia?.colonia || "", municipio: colonia?.municipio || "",
         direccion: (compra.calle || "").trim(),
       });
       setFolio(n); setPaso("enviado");
@@ -263,7 +280,9 @@ export function Checkout({ cart, stockDe, colonias, compra, setCompra, onQty, on
           {/* Entrega */}
           {compra.metodo && (
             <div className="mt-5">
-              <p className="font-display text-lg leading-snug mb-2">{t("compra.dondeEnvio", { nombre: (compra.nombre || "").trim().split(" ")[0] })}</p>
+              <p className="font-display text-lg leading-snug">{t("compra.dondeEnvio", { nombre: (compra.nombre || "").trim().split(" ")[0] })}</p>
+              {!colonia && <T k="compra.direccionOpcional" as="p" className="text-xs mt-0.5 mb-2 block" style={{ color: "#8C89A0" }} />}
+              {colonia && <div className="mb-2" />}
               <SelectorColonia colonias={colonias} valor={colonia} onElegir={(c) => { set("coloniaId", c ? c.id : ""); setError(""); }} />
               {colonia && (
                 <>
@@ -284,9 +303,7 @@ export function Checkout({ cart, stockDe, colonias, compra, setCompra, onQty, on
           {/* Totales */}
           <div className="rounded-2xl p-4 mt-5 space-y-1.5 text-sm" style={{ background: "#EEEDF3" }}>
             <Renglon k="compra.subtotal" valor={`${money(tot.subtotal)}`} extra={`(${t(piezas === 1 ? "pedido.articulo" : "pedido.articulos", { n: piezas })})`} />
-            {colonia && (
-              <Renglon k="compra.envio" valor={tot.puntoMedio ? "Punto medio" : tot.envio > 0 ? money(tot.envio) : t("compra.envioGratis")} />
-            )}
+            <Renglon k="compra.envio" valor={!colonia ? t("compra.envioPorAcordar") : tot.puntoMedio ? "Punto medio" : tot.envio > 0 ? money(tot.envio) : t("compra.envioGratis")} />
             {tot.cargoTarjeta > 0 && <Renglon k="compra.cargo" valor={money(tot.cargoTarjeta)} />}
             <div className="flex items-center justify-between pt-2 mt-1 border-t" style={{ borderColor: "#DCD8E8" }}>
               <T k="pedido.total" as="span" className="font-medium" />
@@ -297,7 +314,7 @@ export function Checkout({ cart, stockDe, colonias, compra, setCompra, onQty, on
           {error && <p className="text-xs mt-3" style={{ color: "#B23B3B" }}>{error}</p>}
           <button type="button" onClick={enviar} disabled={enviando}
             className="w-full mt-4 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
-            style={{ background: compra.metodo && colonia ? VERDE : "#9BC4A3", color: "#fff" }}>
+            style={{ background: compra.metodo ? VERDE : "#9BC4A3", color: "#fff" }}>
             <Send size={15} /> {enviando ? t("compra.enviando") : t("compra.enviarPedido")}
           </button>
         </>

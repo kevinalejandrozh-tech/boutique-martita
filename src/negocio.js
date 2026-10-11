@@ -107,8 +107,9 @@ export async function crearPedido(datos) {
 }
 
 // Confirma un pedido: descuenta piezas (registradas como ventas), descuenta el
-// embalaje que se usa por pedido y registra ese embalaje como gasto.
-export async function confirmarPedido(pedido) {
+// embalaje que se usa por pedido (más el embalaje adicional elegido al confirmar,
+// `extras` = { idMaterial: piezas }) y registra ese embalaje como gasto.
+export async function confirmarPedido(pedido, { extras = {} } = {}) {
   const pedidoRef = registroDoc("pedido", pedido.id);
   const qtyPorProducto = {};
   (pedido.items || []).forEach((i) => { qtyPorProducto[i.id] = (qtyPorProducto[i.id] || 0) + (Number(i.qty) || 0); });
@@ -136,7 +137,7 @@ export async function confirmarPedido(pedido) {
       const id = ids[k];
       const ventas = [...p.ventas];
       (pedido.items || []).filter((i) => i.id === id).forEach((i) => {
-        ventas.push({ id: uid(), at: ahora, qty: Number(i.qty) || 0, precio: Number(i.precio) || 0, costo: Number(p.precioCompra) || 0, pedido: pedido.folio });
+        ventas.push({ id: uid(), at: ahora, qty: Number(i.qty) || 0, precio: Number(i.precio) || 0, costo: Number(p.precioCompra) || 0, pedido: pedido.folio, pedidoId: pedido.id });
         costoProductos += (Number(p.precioCompra) || 0) * (Number(i.qty) || 0);
       });
       const restante = p.cantidad - qtyPorProducto[id];
@@ -147,8 +148,10 @@ export async function confirmarPedido(pedido) {
     const lista = snapEmb.exists() && Array.isArray(snapEmb.data().lista) ? snapEmb.data().lista : [];
     let costoEmbalaje = 0;
     const usado = [];
+    const sinStock = lista.filter((m) => (Number(extras[m.id]) || 0) > Math.max(0, Number(m.stock) || 0));
+    if (sinStock.length) throw new Error(`No hay embalaje suficiente: ${sinStock.map((m) => `«${m.nombre}» (hay ${m.stock || 0})`).join(", ")}`);
     const nuevaLista = lista.map((m) => {
-      const porPedido = Math.max(0, Number(m.porPedido) || 0);
+      const porPedido = Math.max(0, Number(m.porPedido) || 0) + Math.max(0, Math.floor(Number(extras[m.id]) || 0));
       const stock = Math.max(0, Number(m.stock) || 0);
       const uso = Math.min(porPedido, stock);
       if (uso <= 0) return m;

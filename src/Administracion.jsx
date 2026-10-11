@@ -321,7 +321,7 @@ export function OrdenesVentaTab({ pedidos, onConfirmar, onCancelar, onWhatsApp }
         <div className="w-12 h-12 rounded-full flex items-center justify-center font-display text-2xl flex-shrink-0" style={{ background: pendientes ? VERDE : "#ECE4F7", color: pendientes ? "#fff" : "var(--colorAcento)" }}>{pendientes}</div>
         <div>
           <p className="font-display text-lg leading-tight">{pendientes === 1 ? "1 pedido pendiente" : `${pendientes} pedidos pendientes`}</p>
-          <p className="text-xs" style={{ color: GRIS }}>Al confirmar se descuentan las piezas, se registra la venta y se abre WhatsApp con el cliente.</p>
+          <p className="text-xs" style={{ color: GRIS }}>Al confirmar se descuentan las piezas y se registra la venta. Puedes elegir si se envía el WhatsApp al cliente.</p>
         </div>
       </div>
 
@@ -380,11 +380,11 @@ function TarjetaPedido({ p, onConfirmar, onCancelar, onWhatsApp }) {
         <a href={`tel:${p.telefono}`} className="flex items-center gap-1.5" style={{ color: "var(--colorAcento)" }}><Phone size={13} /> {p.telefono}</a>
         <p className="flex items-start gap-1.5 sm:col-span-2" style={{ color: "#4A4760" }}>
           <MapPin size={13} className="flex-shrink-0 mt-1" />
-          <span>{[p.direccion, p.colonia, p.municipio].filter(Boolean).join(", ")}</span>
+          <span>{[p.direccion, p.colonia, p.municipio].filter(Boolean).join(", ") || "Sin dirección: entrega por acordar"}</span>
         </p>
         <p className="flex items-center gap-1.5 text-xs" style={{ color: p.puntoMedio ? "#C2410C" : "#4A4760" }}>
           {p.puntoMedio ? <AlertTriangle size={13} /> : <Truck size={13} />}
-          {p.puntoMedio ? "Sin cobertura: acordar punto medio" : p.envio > 0 ? `Envío ${money(p.envio)}` : "Envío gratis"}
+          {p.puntoMedio ? "Sin cobertura: acordar punto medio" : !p.colonia ? "Envío por acordar" : p.envio > 0 ? `Envío ${money(p.envio)}` : "Envío gratis"}
         </p>
         <p className="flex items-center gap-1.5 text-xs" style={{ color: "#4A4760" }}>
           <IconoMetodo size={13} /> {metodo}{p.cargoTarjeta > 0 ? ` · cargo 5% ${money(p.cargoTarjeta)}` : ""}
@@ -757,3 +757,92 @@ export function ColoniasModal({ lista, onGuardar, onCerrar }) {
   );
 }
 
+
+// ===========================================================================
+// CONFIRMAR UNA ORDEN DE VENTA (con o sin WhatsApp al cliente)
+// ===========================================================================
+export function ConfirmarPedidoModal({ pedido, embalaje = [], onConfirmar, onCerrar }) {
+  const [trabajando, setTrabajando] = useState(false);
+  const [error, setError] = useState("");
+  const [extras, setExtras] = useState({}); // { idMaterial: piezas }
+  const [nuevo, setNuevo] = useState({ id: "", qty: 1 });
+  const [metodo] = METODO_PAGO[pedido.metodoPago] || ["—"];
+  const porPedido = embalaje.filter((m) => Number(m.porPedido) > 0);
+  const extrasLista = Object.entries(extras).map(([id, qty]) => ({ m: embalaje.find((x) => x.id === id), qty })).filter((x) => x.m);
+  const costoExtra = extrasLista.reduce((s, x) => s + x.qty * (Number(x.m.costo) || 0), 0);
+  const costoBase = porPedido.reduce((s, m) => s + Math.min(Number(m.porPedido) || 0, Number(m.stock) || 0) * (Number(m.costo) || 0), 0);
+  const agregarExtra = () => {
+    const qty = Math.max(1, Math.floor(Number(nuevo.qty) || 0));
+    if (!nuevo.id) return;
+    setExtras((x) => ({ ...x, [nuevo.id]: (x[nuevo.id] || 0) + qty }));
+    setNuevo({ id: "", qty: 1 });
+  };
+  const quitarExtra = (id) => setExtras((x) => { const n = { ...x }; delete n[id]; return n; });
+  const confirmar = async (conMensaje) => {
+    setTrabajando(true); setError("");
+    try { await onConfirmar(pedido, conMensaje, extras); }
+    catch (e) { setError(e?.message || "No se pudo confirmar."); setTrabajando(false); }
+  };
+  return (
+    <Modal onClose={trabajando ? () => {} : onCerrar} title={`Confirmar ${formatoFolio("PV", pedido.folio)}`}>
+      <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: "#fff", border: "1px solid #E6E3EE" }}>
+        <p className="font-medium">{pedido.nombre} · <span style={{ color: GRIS }}>{pedido.telefono}</span></p>
+        <p className="text-xs" style={{ color: "#4A4760" }}>{pedido.articulos || (pedido.items || []).length} artículo(s) · {metodo} · <strong>{money(pedido.total)}</strong></p>
+      </div>
+      <p className="text-sm mt-4" style={{ color: "#4A4760" }}>Se descontarán las piezas del inventario y se registrará la venta.</p>
+
+      {/* Embalaje */}
+      <div className="rounded-xl p-3 mt-4" style={{ background: "#F7F6FB" }}>
+        <p className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: "#4A4760" }}><Box size={13} /> Embalaje</p>
+        {embalaje.length === 0 ? (
+          <p className="text-xs mt-2" style={{ color: GRIS }}>No hay materiales de embalaje. Agrégalos en Finanzas → Materiales de embalaje.</p>
+        ) : (
+          <>
+            {porPedido.length > 0 && (
+              <p className="text-[11px] mt-1.5" style={{ color: GRIS }}>
+                Se usa en cada pedido: {porPedido.map((m) => `${m.porPedido} ${m.nombre}`).join(", ")}
+              </p>
+            )}
+            {extrasLista.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {extrasLista.map(({ m, qty }) => (
+                  <div key={m.id} className="flex items-center gap-2 text-xs rounded-lg px-2.5 py-1.5" style={{ background: "#fff" }}>
+                    <span className="flex-1 min-w-0 truncate">+ {qty} {m.nombre}</span>
+                    <span style={{ color: qty > (Number(m.stock) || 0) ? ROJO : GRIS }}>hay {m.stock || 0}</span>
+                    <span className="font-medium">{money(qty * (Number(m.costo) || 0))}</span>
+                    <button type="button" onClick={() => quitarExtra(m.id)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "#FBEAEA" }} aria-label="Quitar embalaje"><X size={11} color={ROJO} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 mt-2">
+              <select value={nuevo.id} onChange={(e) => setNuevo((x) => ({ ...x, id: e.target.value }))} className="flex-1 min-w-0 rounded-xl border px-2.5 py-2 text-xs" style={inputStyle} aria-label="Material de embalaje adicional">
+                <option value="">Agregar embalaje adicional…</option>
+                {embalaje.map((m) => <option key={m.id} value={m.id}>{m.nombre} · hay {m.stock || 0} · {money(m.costo)} c/u</option>)}
+              </select>
+              <input type="number" min="1" step="1" inputMode="numeric" value={nuevo.qty} onChange={(e) => setNuevo((x) => ({ ...x, qty: e.target.value }))}
+                className="w-16 rounded-xl border px-2 py-2 text-xs text-center" style={inputStyle} aria-label="Piezas" />
+              <button type="button" onClick={agregarExtra} disabled={!nuevo.id} className="rounded-xl px-3 text-xs font-medium flex items-center gap-1 disabled:opacity-40" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}><Plus size={12} /> Agregar</button>
+            </div>
+            <p className="text-[11px] mt-2" style={{ color: GRIS }}>Costo de embalaje (gasto): <strong style={{ color: "#4A4760" }}>{money(costoBase + costoExtra)}</strong></p>
+          </>
+        )}
+      </div>
+      <p className="font-display text-lg leading-snug mt-3">¿Quieres enviarle el mensaje de WhatsApp al cliente?</p>
+      {error && <p className="text-xs mt-3 rounded-xl px-3 py-2" style={{ background: "#FBEAEA", color: ROJO }}>{error}</p>}
+      <div className="grid gap-2 mt-4">
+        <button type="button" disabled={trabajando} onClick={() => confirmar(true)}
+          className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: VERDE, color: "#fff" }}>
+          <MessageCircle size={15} /> Confirmar y enviar WhatsApp
+        </button>
+        <button type="button" disabled={trabajando} onClick={() => confirmar(false)}
+          className="rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
+          <Check size={15} /> Confirmar sin mensaje
+        </button>
+        <button type="button" disabled={trabajando} onClick={onCerrar} className="rounded-xl py-2.5 text-sm border" style={{ borderColor: "#E3E0EC", color: "#4A4760", background: "#fff" }}>
+          Cancelar
+        </button>
+      </div>
+    </Modal>
+  );
+}

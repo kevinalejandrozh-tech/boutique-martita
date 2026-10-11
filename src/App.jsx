@@ -4,7 +4,7 @@ import {
   ShoppingBag, LayoutDashboard, Settings, ImageOff,
   Package, DollarSign, Check, Info,
   Filter, Calendar, Clock, Truck, Tag, BarChart3, ShieldCheck, RotateCcw,
-  Eye, EyeOff, Minus, Undo2, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
+  Eye, EyeOff, Minus, Undo2, LayoutGrid, List, ArrowUpDown, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
   ClipboardList, MapPin, Receipt, ArrowUpRight, SlidersHorizontal,
 } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -25,7 +25,7 @@ import {
   crearPedido, confirmarPedido, cancelarPedido, guardarColonias,
 } from "./negocio";
 import { IconoCarritoMas, CantidadModal, SugerenciaModal, BarraCarrito, Checkout, AvisoSalida } from "./Compra";
-import { OrdenCompraModal, ListaOC, OrdenesVentaTab, FinanzasTab, ColoniasModal } from "./Administracion";
+import { OrdenCompraModal, ListaOC, OrdenesVentaTab, FinanzasTab, ColoniasModal, ConfirmarPedidoModal } from "./Administracion";
 
 // ---------------------------------------------------------------------------
 // Constantes
@@ -43,16 +43,39 @@ const originalDoc = (clave) => doc(db, "settings", `foto_original_${clave}`);
 const PAQUETES_URL = "/importar/index.json";
 
 const DEFAULT_SETTINGS = {
-  nombre: "Boutique Martita", tagline: "Bazar de ropa bonita", whatsapp: "", pin: "1234",
+  nombre: "Brenda Negocios", tagline: "Bazar de ropa bonita", whatsapp: "", pin: "1234",
   fotoAspecto: "3:4", tarjetaTam: "normal", logoTam: 44, fondoOpacidad: OPACIDAD_FONDO,
 };
 const CAMPO_TIENDA = { "tienda.nombre": "nombre", "tienda.tagline": "tagline" };
 
+// Tarjetas a la mitad del tamaño anterior (en celular se limita para que se lean).
 const GRID_TARJETAS = {
-  chico: "grid grid-cols-3 md:grid-cols-4 gap-x-2.5 gap-y-5",
-  normal: "grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-7",
-  grande: "grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-8",
+  chico: "grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2 gap-y-4",
+  normal: "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-x-2.5 gap-y-5",
+  grande: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3.5 gap-y-6",
 };
+const ORDENES_CATALOGO = [
+  ["recomendado", "catalogo.ordenRecomendado"],
+  ["nombre", "catalogo.ordenNombre"],
+  ["precioBajo", "catalogo.ordenPrecioBajo"],
+  ["precioAlto", "catalogo.ordenPrecioAlto"],
+  ["cantidad", "catalogo.ordenCantidad"],
+];
+const PREF_KEY = "bm-preferencias-v1";
+function leerPref(clave, porDefecto) {
+  try { return JSON.parse(localStorage.getItem(PREF_KEY))?.[clave] ?? porDefecto; } catch { return porDefecto; }
+}
+function guardarPref(clave, valor) {
+  try {
+    const actual = JSON.parse(localStorage.getItem(PREF_KEY)) || {};
+    localStorage.setItem(PREF_KEY, JSON.stringify({ ...actual, [clave]: valor }));
+  } catch { /* sin almacenamiento */ }
+}
+function usePref(clave, porDefecto) {
+  const [v, setV] = useState(() => leerPref(clave, porDefecto));
+  const set = useCallback((n) => { setV(n); guardarPref(clave, n); }, [clave]);
+  return [v, set];
+}
 
 // ---------------------------------------------------------------------------
 // Caché local de textos y diseño (evita parpadeos al abrir la página)
@@ -215,6 +238,7 @@ export default function App() {
   const [embalaje, setEmbalaje] = useState([]);
   const [ocAbierta, setOcAbierta] = useState(null); // {} = nueva
   const [coloniasOpen, setColoniasOpen] = useState(false);
+  const [confirmando, setConfirmando] = useState(null);
 
   const [ventaTarget, setVentaTarget] = useState(null);
   const [deshacer, setDeshacer] = useState(null);
@@ -650,19 +674,42 @@ export default function App() {
   // -------------------------------------------------------------------
   const mensajeCliente = (p) => t("compra.mensajeCliente", { nombre: (p.nombre || "").trim().split(" ")[0] || p.nombre });
 
-  const confirmarOrdenVenta = async (p) => {
-    if (!window.confirm(`¿Confirmar ${formatoFolio("PV", p.folio)} de ${p.nombre}? Se descontarán las piezas y se registrará la venta.`)) return;
+  // Confirmar una orden: se pregunta si se envía el WhatsApp al cliente.
+  const confirmarOrdenVenta = (p) => setConfirmando(p);
+  const ejecutarConfirmacion = async (p, conMensaje, extras) => {
     // Se abre la ventana antes de esperar a la base de datos para que el navegador no la bloquee.
-    const ventana = window.open("", "_blank");
+    const ventana = conMensaje ? window.open("", "_blank") : null;
     try {
-      await confirmarPedido(p);
-      const url = whatsappUrl(p.telefono, mensajeCliente(p));
-      if (ventana) ventana.location.href = url; else window.location.href = url;
+      await confirmarPedido(p, { extras });
+      if (conMensaje) {
+        const url = whatsappUrl(p.telefono, mensajeCliente(p));
+        if (ventana) ventana.location.href = url; else window.location.href = url;
+      }
       avisar(`${formatoFolio("PV", p.folio)} confirmado`);
+      setConfirmando(null);
     } catch (e) {
       if (ventana) ventana.close();
       console.error(e);
-      avisar(e?.message || t("general.errorGuardar"), "error");
+      throw e;
+    }
+  };
+
+  // Aprobar todas las órdenes pendientes (sin WhatsApp).
+  const aprobarTodas = async () => {
+    const pendientes = pedidos.filter((x) => x.estado === "pendiente").sort((a, b) => a.createdAt - b.createdAt);
+    if (!pendientes.length) return;
+    if (!window.confirm(`¿Aprobar ${pendientes.length} orden(es) pendiente(s)? Se descontarán del inventario y se registrarán como ventas. No se enviará WhatsApp.`)) return;
+    const errores = [];
+    let ok = 0;
+    for (const x of pendientes) {
+      try { await confirmarPedido(x); ok++; }
+      catch (e) { errores.push(`${formatoFolio("PV", x.folio)} (${x.nombre}): ${e?.message || "error"}`); }
+    }
+    if (errores.length) {
+      avisar(`${ok} aprobada(s) · ${errores.length} sin aprobar`, "error");
+      window.alert(`Se aprobaron ${ok} orden(es).\n\nNo se pudieron aprobar:\n${errores.join("\n")}`);
+    } else {
+      avisar(`${ok} orden(es) aprobada(s)`);
     }
   };
   const cancelarOrdenVenta = async (p) => {
@@ -1024,7 +1071,7 @@ export default function App() {
             onExport={exportExcel}
             negocio={{
               pedidos, gastos, ordenesCompra, embalaje, avisar,
-              onConfirmarPedido: confirmarOrdenVenta, onCancelarPedido: cancelarOrdenVenta, onWhatsApp: whatsAppOrden,
+              onConfirmarPedido: confirmarOrdenVenta, onCancelarPedido: cancelarOrdenVenta, onWhatsApp: whatsAppOrden, onAprobarTodas: aprobarTodas,
               onAbrirOC: setOcAbierta, onNuevaOC: () => setOcAbierta({}), onColonias: () => setColoniasOpen(true),
             }}
           />
@@ -1060,6 +1107,10 @@ export default function App() {
         {ocAbierta && (
           <OrdenCompraModal oc={ocAbierta.id ? ocAbierta : null} products={products} categorias={categorias}
             onCerrar={() => setOcAbierta(null)} avisar={avisar} />
+        )}
+        {confirmando && (
+          <ConfirmarPedidoModal pedido={pedidos.find((x) => x.id === confirmando.id) || confirmando} embalaje={embalaje}
+            onConfirmar={ejecutarConfirmacion} onCerrar={() => setConfirmando(null)} />
         )}
         {coloniasOpen && (
           <ColoniasModal lista={colonias}
@@ -1161,6 +1212,21 @@ export default function App() {
 function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categorias, onAdd, loading, total, settings, portada, acciones }) {
   const { t, editando } = useEdicion();
   const tam = settings.tarjetaTam || "normal";
+  const [orden, setOrden] = usePref("catalogoOrden", "recomendado");
+  const [vista, setVista] = usePref("catalogoVista", "cuadricula");
+  const ordenados = useMemo(() => {
+    const precio = (p) => Number(p.precioVenta) || 0;
+    const lista = [...products];
+    if (orden === "nombre") lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es", { sensitivity: "base" }));
+    else if (orden === "precioBajo") lista.sort((a, b) => precio(a) - precio(b));
+    else if (orden === "precioAlto") lista.sort((a, b) => precio(b) - precio(a));
+    else if (orden === "cantidad") lista.sort((a, b) => (b.cantidad || 0) - (a.cantidad || 0));
+    return lista;
+  }, [products, orden]);
+  const accionesDe = (p) => ({
+    foto: () => acciones.foto(p), form: () => acciones.form(p),
+    nombre: () => acciones.campo(p, "nombre"), precio: () => acciones.campo(p, "precioVenta"), categoria: () => acciones.campo(p, "categoria"),
+  });
   return (
     <main className="relative z-[1] max-w-5xl mx-auto px-4 pb-16">
       {(portada || editando) && (
@@ -1214,6 +1280,26 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
         <T k="catalogo.subtitulo" as="p" className="text-[15px] leading-relaxed block" style={{ color: "#4A4760" }} />
       </div>
 
+      {/* Modo de vista y orden */}
+      <div className="flex items-center justify-between gap-2 pt-4">
+        <div className="flex flex-shrink-0 rounded-full p-1 border" style={{ borderColor: "#E3E0EC", background: "#fff" }} role="group" aria-label="Modo de vista">
+          {[["cuadricula", LayoutGrid, "catalogo.vistaCuadricula"], ["lista", List, "catalogo.vistaLista"]].map(([v, Icono, k]) => (
+            <button key={v} type="button" onClick={() => setVista(v)} aria-pressed={vista === v} title={t(k)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition"
+              style={vista === v ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { color: "#4A4760" }}>
+              <Icono size={13} /> <span className={editando ? undefined : "hidden min-[400px]:inline"}><T k={k} enBoton /></span>
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: "#4A4760" }}>
+          <ArrowUpDown size={13} className="flex-shrink-0" />
+          <span className="sr-only">{t("catalogo.ordenar")}</span>
+          <select value={orden} onChange={(e) => setOrden(e.target.value)} className="min-w-0 w-full max-w-[190px] rounded-full border pl-3 pr-2 py-2 text-xs outline-none" style={{ borderColor: "#E3E0EC", background: "#fff" }}>
+            {ORDENES_CATALOGO.map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
+          </select>
+        </label>
+      </div>
+
       {loading ? (
         <T k="catalogo.cargando" as="div" className="py-20 text-center text-sm block" style={{ color: "#A9A6BA" }} />
       ) : (
@@ -1223,20 +1309,27 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
           ) : products.length === 0 && !editando ? (
             <EmptyState k="catalogo.sinResultados" />
           ) : (
+            vista === "lista" ? (
+              <div className="pt-4 space-y-2">
+                {editando && (
+                  <button type="button" onClick={acciones.nuevo} className="w-full rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 text-sm py-4" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)" }}>
+                    <Plus size={18} /> Agregar producto
+                  </button>
+                )}
+                {ordenados.map((p) => <FilaCatalogo key={p.id} p={p} onAdd={() => onAdd(p)} acciones={accionesDe(p)} />)}
+              </div>
+            ) : (
             <div className={`${GRID_TARJETAS[tam] || GRID_TARJETAS.normal} pt-4`}>
               {editando && (
-                <button type="button" onClick={acciones.nuevo} className="rounded-[26px] border-2 border-dashed flex flex-col items-center justify-center gap-2 text-sm p-4" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)", minHeight: 160 }}>
-                  <Plus size={20} /> Agregar producto
+                <button type="button" onClick={acciones.nuevo} className="rounded-[18px] border-2 border-dashed flex flex-col items-center justify-center gap-1.5 text-xs p-3" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)", minHeight: 110 }}>
+                  <Plus size={18} /> Agregar producto
                 </button>
               )}
-              {products.map((p) => (
-                <ProductCard key={p.id} p={p} onAdd={() => onAdd(p)} aspecto={aspectoCss(settings.fotoAspecto)} compacto={tam === "chico"}
-                  acciones={{
-                    foto: () => acciones.foto(p), form: () => acciones.form(p),
-                    nombre: () => acciones.campo(p, "nombre"), precio: () => acciones.campo(p, "precioVenta"), categoria: () => acciones.campo(p, "categoria"),
-                  }} />
+              {ordenados.map((p) => (
+                <ProductCard key={p.id} p={p} onAdd={() => onAdd(p)} aspecto={aspectoCss(settings.fotoAspecto)} tam={tam} acciones={accionesDe(p)} />
               ))}
             </div>
+            )
           )}
           {editando && products.length === 0 && <EmptyState k={total === 0 ? "catalogo.vacio" : "catalogo.sinResultados"} />}
         </>
@@ -1245,49 +1338,61 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
   );
 }
 
-function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
+// Tamaños de las tarjetas (la mitad de los anteriores).
+const ESTILO_TARJETA = {
+  chico: { radio: "rounded-[14px]", pad: "p-1.5 pr-6", nombre: "text-[10px]", cat: "text-[8px]", boton: "w-7 h-7", icono: 12, mt: "-mt-[14px]", precio: "text-xs", extra: "text-[9px]", info: "w-5 h-5 top-1.5 right-1.5", infoIcono: 10 },
+  normal: { radio: "rounded-[16px]", pad: "p-2 pr-7", nombre: "text-[11px] sm:text-xs", cat: "text-[9px]", boton: "w-8 h-8", icono: 14, mt: "-mt-[16px]", precio: "text-sm", extra: "text-[10px]", info: "w-5 h-5 top-2 right-2", infoIcono: 11 },
+  grande: { radio: "rounded-[20px]", pad: "p-2.5 pr-8", nombre: "text-xs sm:text-sm", cat: "text-[10px]", boton: "w-9 h-9", icono: 15, mt: "-mt-[18px]", precio: "text-base", extra: "text-[11px]", info: "w-6 h-6 top-2 right-2", infoIcono: 12 },
+};
+
+function ProductCard({ p, onAdd, aspecto, tam = "normal", acciones }) {
   const { t, editando } = useEdicion();
   const [showLoc, setShowLoc] = useState(false);
-  const boton = compacto ? "w-9 h-9" : "w-11 h-11";
+  const e = ESTILO_TARJETA[tam] || ESTILO_TARJETA.normal;
+  // En modo tienda, tocar la foto o el texto abre la ventana de piezas.
+  const abrir = editando ? undefined : onAdd;
+  const tecla = (ev) => { if (!editando && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onAdd(); } };
   return (
     <div className="tarjeta-producto flex flex-col">
-      <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${compacto ? "rounded-[18px]" : "rounded-[26px]"}`} style={{ background: "#EEEDF3", aspectRatio: aspecto }}>
-        {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={22} color="#BDBACC" />}
+      <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${e.radio} ${editando ? "" : "cursor-pointer"}`}
+        style={{ background: "#EEEDF3", aspectRatio: aspecto }}
+        onClick={abrir} onKeyDown={tecla} role={editando ? undefined : "button"} tabIndex={editando ? undefined : 0} aria-label={editando ? undefined : `${t("tarjeta.agregar")}: ${p.nombre}`}>
+        {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={18} color="#BDBACC" />}
         {/* Nombre y categoría sobre la foto, como en un catálogo editorial */}
-        <div className={`absolute inset-x-0 top-0 ${compacto ? "p-2.5 pr-8" : "p-3 pr-9 sm:p-4 sm:pr-10"} pointer-events-none`}
+        <div className={`absolute inset-x-0 top-0 ${e.pad} pointer-events-none`}
           style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.6) 60%, rgba(255,255,255,0))" }}>
           <div className="pointer-events-auto">
-            <Editable as="p" className={`font-display ${compacto ? "text-sm" : "text-[15px] sm:text-lg"} leading-tight line-clamp-2`} style={{ color: "#17152B" }} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
-            <Editable as="p" className="text-[10px] mt-0.5" style={{ color: "#4A4760" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
+            <Editable as="p" className={`font-display ${e.nombre} leading-tight line-clamp-2`} style={{ color: "#17152B" }} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
+            <Editable as="p" className={`${e.cat} mt-0.5 truncate`} style={{ color: "#4A4760" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
               {p.categoria || (editando ? t("dash.sinCategoria") : "")}
             </Editable>
           </div>
         </div>
         {editando && (
-          <span className="absolute bottom-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.9)", color: "#4A4760" }}>
+          <span className="absolute bottom-1.5 right-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.9)", color: "#4A4760" }}>
             {t("prod.stock", { n: p.cantidad })}
           </span>
         )}
-        <BotonFoto onClick={acciones.foto} className="absolute bottom-2 left-2" />
+        <BotonFoto onClick={acciones.foto} className="absolute bottom-1.5 left-1.5" />
         {p.ubicacion && (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); setShowLoc((v) => !v); }}
-              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
+              onClick={(ev) => { ev.stopPropagation(); setShowLoc((v) => !v); }}
+              className={`absolute ${e.info} rounded-full flex items-center justify-center transition hover:scale-110`}
               style={{ background: "rgba(255,255,255,0.85)" }}
               aria-label={t("tarjeta.info")} title={t("tarjeta.info")}
             >
-              <Info size={13} color="#4A4760" />
+              <Info size={e.infoIcono} color="#4A4760" />
             </button>
             {showLoc && (
               <div
-                onClick={(e) => { e.stopPropagation(); setShowLoc(false); }}
-                className="absolute inset-0 flex items-center justify-center p-3 cursor-pointer"
+                onClick={(ev) => { ev.stopPropagation(); setShowLoc(false); }}
+                className="absolute inset-0 flex items-center justify-center p-2 cursor-pointer"
                 style={{ background: "rgba(23,21,43,0.55)" }}
               >
-                <div className="rounded-xl px-3 py-2.5 shadow-lg text-center w-full" style={{ background: "#F6F5FA" }}>
-                  <T k="tarjeta.ubicacion" as="p" className="text-[9px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
-                  <p className="text-xs font-medium mt-0.5" style={{ color: "#17152B" }}>{p.ubicacion}</p>
+                <div className="rounded-lg px-2 py-1.5 shadow-lg text-center w-full" style={{ background: "#F6F5FA" }}>
+                  <T k="tarjeta.ubicacion" as="p" className="text-[8px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
+                  <p className="text-[11px] font-medium mt-0.5" style={{ color: "#17152B" }}>{p.ubicacion}</p>
                 </div>
               </div>
             )}
@@ -1296,26 +1401,51 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
       </div>
 
       {/* Botón circular que monta sobre el borde inferior de la foto */}
-      <div className={`relative z-10 flex justify-center pointer-events-none [&>*]:pointer-events-auto ${compacto ? "-mt-[18px]" : "-mt-[22px]"}`}>
+      <div className={`relative z-10 flex justify-center pointer-events-none [&>*]:pointer-events-auto ${e.mt}`}>
         {editando ? (
-          <button onClick={acciones.form} className={`${boton} rounded-full flex items-center justify-center`} style={{ background: "var(--colorAcento)", color: "#fff", boxShadow: "0 0 0 4px var(--colorFondo)" }} aria-label="Editar producto" title="Editar todos los datos">
-            <Pencil size={15} />
+          <button onClick={acciones.form} className={`${e.boton} rounded-full flex items-center justify-center`} style={{ background: "var(--colorAcento)", color: "#fff", boxShadow: "0 0 0 3px var(--colorFondo)" }} aria-label="Editar producto" title="Editar todos los datos">
+            <Pencil size={e.icono - 2} />
           </button>
         ) : (
           <button onClick={onAdd}
-            className={`${boton} rounded-full flex items-center justify-center transition hover:scale-105`}
-            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)", boxShadow: "0 0 0 4px var(--colorFondo)" }}
+            className={`${e.boton} rounded-full flex items-center justify-center transition hover:scale-105`}
+            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)", boxShadow: "0 0 0 3px var(--colorFondo)" }}
             aria-label={t("tarjeta.agregar")} title={t("tarjeta.agregar")}>
-            <IconoCarritoMas size={compacto ? 15 : 18} />
+            <IconoCarritoMas size={e.icono} />
           </button>
         )}
       </div>
 
-      <div className={`text-center ${compacto ? "pt-1" : "pt-1.5"} px-1`}>
-        <Editable as="span" className={`font-display ${compacto ? "text-base" : "text-xl"} leading-none`} style={{ color: "#17152B" }} onEditar={acciones.precio} titulo="Editar precio">{money(p.precioVenta)}</Editable>
-        {(p.talla || p.color) && <Editable as="p" className="text-[11px] mt-0.5" style={{ color: "#8C89A0" }} onEditar={acciones.form} titulo="Editar producto">{detalleDe(p)}</Editable>}
-        {(p.material || p.grupo) && <Editable as="p" className="text-[11px]" style={{ color: "#A9A6BA" }} onEditar={acciones.form} titulo="Editar producto">{[p.material, p.grupo].filter(Boolean).join(" · ")}</Editable>}
+      <div className={`text-center pt-1 px-0.5 ${editando ? "" : "cursor-pointer"}`} onClick={abrir}>
+        <Editable as="span" className={`font-display ${e.precio} leading-none`} style={{ color: "#17152B" }} onEditar={acciones.precio} titulo="Editar precio">{money(p.precioVenta)}</Editable>
+        {(p.talla || p.color) && <Editable as="p" className={`${e.extra} mt-0.5 truncate`} style={{ color: "#8C89A0" }} onEditar={acciones.form} titulo="Editar producto">{detalleDe(p)}</Editable>}
+        {(p.material || p.grupo) && <Editable as="p" className={`${e.extra} truncate`} style={{ color: "#A9A6BA" }} onEditar={acciones.form} titulo="Editar producto">{[p.material, p.grupo].filter(Boolean).join(" · ")}</Editable>}
       </div>
+    </div>
+  );
+}
+
+// Renglón del catálogo en modo lista.
+function FilaCatalogo({ p, onAdd, acciones }) {
+  const { t, editando } = useEdicion();
+  const abrir = editando ? acciones.form : onAdd;
+  return (
+    <div role="button" tabIndex={0} onClick={abrir} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); abrir(); } }}
+      className="flex items-center gap-3 rounded-2xl border p-2 pr-3 cursor-pointer transition hover:shadow-sm" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
+      <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EEEDF3" }}>
+        {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={16} color="#BDBACC" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: "#17152B" }}>{p.nombre}</p>
+        <p className="text-[11px] truncate" style={{ color: "#8C89A0" }}>
+          {[p.categoria, detalleDe(p), t("catalogo.piezas", { n: p.cantidad })].filter(Boolean).join(" · ")}
+        </p>
+      </div>
+      <span className="font-display text-base flex-shrink-0" style={{ color: "#17152B" }}>{money(p.precioVenta)}</span>
+      <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" aria-hidden="true"
+        style={editando ? { background: "var(--colorAcento)", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
+        {editando ? <Pencil size={13} /> : <IconoCarritoMas size={14} />}
+      </span>
     </div>
   );
 }
@@ -1346,7 +1476,7 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
 
       {tab === "dashboard" && (
         <Dashboard products={products} onExport={onExport} onColonias={negocio.onColonias}
-          pedidos={negocio.pedidos} gastos={negocio.gastos} onVerOrdenes={() => setTab("ordenes")} />
+          pedidos={negocio.pedidos} gastos={negocio.gastos} onVerOrdenes={() => setTab("ordenes")} onAprobarTodas={negocio.onAprobarTodas} />
       )}
       {tab === "productos" && (
         <ProductosTab products={products} loading={loading} onNew={onNew} onEdit={onEdit} onDelete={onDelete}
@@ -1368,8 +1498,17 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
-function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrdenes }) {
+function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrdenes, onAprobarTodas }) {
   const { t } = useEdicion();
+  // Recuadros ocultos (se recuerdan en este dispositivo)
+  const [ocultos, setOcultos] = usePref("dashOcultos", []);
+  const ocultar = (id) => ({
+    oculto: ocultos.includes(id),
+    onAlternar: () => setOcultos(ocultos.includes(id) ? ocultos.filter((x) => x !== id) : [...ocultos, id]),
+  });
+  const [agruparPor, setAgruparPor] = useState("fecha"); // fecha | cliente | articulo
+  const [filtroCliente, setFiltroCliente] = useState("");
+  const [filtroArticulo, setFiltroArticulo] = useState("");
   const hoy = new Date();
   const hace30 = new Date(hoy.getTime() - 29 * DAY_MS);
   const [desde, setDesde] = useState(tsToDateStr(hace30.getTime()));
@@ -1399,6 +1538,13 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
         .sort((a, b) => b.venta - a.venta);
     };
 
+    const clientePorFolio = {};
+    const clientePorId = {};
+    pedidos.forEach((p) => {
+      const nombre = (p.nombre || "").trim() || t("dash.ventaDirecta");
+      clientePorId[p.id] = nombre;
+      if (p.folio && !clientePorFolio[p.folio]) clientePorFolio[p.folio] = nombre;
+    });
     const costoVendido = ventas.reduce((s, v) => s + v.costo * v.qty, 0);
     const cobros = pedidos.filter((p) => p.estado === "confirmado").reduce((s, p) => s + (Number(p.envio) || 0) + (Number(p.cargoTarjeta) || 0), 0);
     const totalGastos = gastos.reduce((s, g) => s + (Number(g.monto) || 0), 0);
@@ -1406,7 +1552,7 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
       totalPiezas, inversion, valorVenta, totalVentas, piezasVendidas: piezas,
       totalGastos, nGastos: gastos.length, utilidadNeta: totalVentas + cobros - costoVendido - totalGastos,
       porCategoria: agrupar("categoria", t("dash.sinCategoria")),
-      ventas,
+      ventas: ventas.map((v) => ({ ...v, cliente: (v.pedidoId && clientePorId[v.pedidoId]) || (v.pedido && clientePorFolio[v.pedido]) || t("dash.ventaDirecta") })),
     };
   }, [products, pedidos, gastos, t]);
 
@@ -1419,7 +1565,20 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
 
     const ventas = d.ventas
       .filter((v) => v.at && v.at >= iniDia && v.at <= finDia)
+      .filter((v) => (!filtroCliente || v.cliente === filtroCliente) && (!filtroArticulo || v.nombre === filtroArticulo))
       .sort((a, b) => b.at - a.at);
+
+    // Totales por cliente o por artículo para la gráfica de barras
+    const grupos = {};
+    if (agruparPor !== "fecha") {
+      ventas.forEach((v) => {
+        const k = (agruparPor === "cliente" ? v.cliente : v.nombre) || "—";
+        if (!grupos[k]) grupos[k] = { nombre: k, monto: 0, piezas: 0 };
+        grupos[k].monto += v.precio * v.qty;
+        grupos[k].piezas += v.qty;
+      });
+    }
+    const barras = Object.values(grupos).sort((a, b) => b.monto - a.monto);
 
     const total = ventas.reduce((s, v) => s + v.precio * v.qty, 0);
     const costo = ventas.reduce((s, v) => s + v.costo * v.qty, 0);
@@ -1443,8 +1602,13 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
         });
       }
     }
-    return { ventas, total, costo, piezas, utilidad: total - costo, dias };
-  }, [d.ventas, desde, hasta]);
+    return { ventas, total, costo, piezas, utilidad: total - costo, dias, barras };
+  }, [d.ventas, desde, hasta, agruparPor, filtroCliente, filtroArticulo]);
+
+  const opcionesReporte = useMemo(() => ({
+    clientes: [...new Set(d.ventas.map((v) => v.cliente))].sort((a, b) => a.localeCompare(b, "es")),
+    articulos: [...new Set(d.ventas.map((v) => v.nombre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
+  }), [d.ventas]);
 
   const rangoRapido = (dias) => {
     const fin = new Date();
@@ -1462,20 +1626,20 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
       </div>
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <KpiCard icon={<Package size={18} />} label={<T k="dash.kpiArticulos" />} value={d.totalPiezas} sub={<T k="dash.kpiArticulosSub" />} />
-        <KpiCard icon={<DollarSign size={18} />} label={<T k="dash.kpiInversion" />} value={money(d.inversion)} sub={<T k="dash.kpiInversionSub" />} />
-        <KpiCard icon={<Tag size={18} />} label={<T k="dash.kpiValor" />} value={money(d.valorVenta)} sub={<T k="dash.kpiValorSub" />} />
-        <KpiCard oscuro icon={<ShoppingBag size={18} />} label={<T k="dash.kpiVentas" />} value={money(d.totalVentas)}
+        <KpiCard {...ocultar("kpiArticulos")} icon={<Package size={18} />} label={<T k="dash.kpiArticulos" />} value={d.totalPiezas} sub={<T k="dash.kpiArticulosSub" />} />
+        <KpiCard {...ocultar("kpiInversion")} icon={<DollarSign size={18} />} label={<T k="dash.kpiInversion" />} value={money(d.inversion)} sub={<T k="dash.kpiInversionSub" />} />
+        <KpiCard {...ocultar("kpiValor")} icon={<Tag size={18} />} label={<T k="dash.kpiValor" />} value={money(d.valorVenta)} sub={<T k="dash.kpiValorSub" />} />
+        <KpiCard {...ocultar("kpiVentas")} oscuro icon={<ShoppingBag size={18} />} label={<T k="dash.kpiVentas" />} value={money(d.totalVentas)}
           sub={<><T k="dash.kpiVentasSub" /> <strong>{d.piezasVendidas}</strong></>} />
-        <KpiCard oscuro icon={<Receipt size={18} />} label={<T k="dash.kpiGastos" />} value={money(d.totalGastos)}
+        <KpiCard {...ocultar("kpiGastos")} oscuro icon={<Receipt size={18} />} label={<T k="dash.kpiGastos" />} value={money(d.totalGastos)}
           sub={<T k="dash.kpiGastosSub" vars={{ n: d.nGastos }} />} />
-        <KpiCard oscuro icon={<BarChart3 size={18} />} label={<T k="dash.kpiUtilidad" />} value={money(d.utilidadNeta)}
+        <KpiCard {...ocultar("kpiUtilidad")} oscuro icon={<BarChart3 size={18} />} label={<T k="dash.kpiUtilidad" />} value={money(d.utilidadNeta)}
           valorColor={d.utilidadNeta < 0 ? "#B23B3B" : undefined} sub={<T k="dash.kpiUtilidadSub" />} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Inventario por categoría */}
-        <Panel title={<T k="dash.porCategoria" />} action={
+        <Panel {...ocultar("porCategoria")} title={<T k="dash.porCategoria" />} action={
           <button onClick={onExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}>
             <Download size={12} /> <T k="dash.excel" enBoton />
           </button>
@@ -1514,11 +1678,11 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
         </Panel>
 
         {/* Resumen de órdenes de venta */}
-        <ResumenOrdenes pedidos={pedidos} onVerOrdenes={onVerOrdenes} />
+        <ResumenOrdenes {...ocultar("ordenes")} pedidos={pedidos} onVerOrdenes={onVerOrdenes} onAprobarTodas={onAprobarTodas} />
       </div>
 
       {/* Reporte de ventas */}
-      <Panel title={<T k="dash.reporte" />} icon={<BarChart3 size={15} color="var(--colorAcento)" />}>
+      <Panel {...ocultar("reporte")} title={<T k="dash.reporte" />} icon={<BarChart3 size={15} color="var(--colorAcento)" />}>
         <div className="flex flex-wrap items-end gap-2 mb-4">
           <div>
             <T k="dash.desde" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
@@ -1530,10 +1694,41 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
             <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)}
               className="block rounded-lg border px-2.5 py-1.5 text-xs mt-0.5" style={{ borderColor: "#E3E0EC", background: "#fff" }} />
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 flex-wrap">
             {[["dash.rango7", 7], ["dash.rango30", 30], ["dash.rango90", 90]].map(([k, n]) => (
               <button key={n} onClick={() => rangoRapido(n)} className="text-[11px] px-2.5 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}><T k={k} enBoton /></button>
             ))}
+            <button onClick={() => { setDesde(""); setHasta(""); }} className="text-[11px] px-2.5 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}><T k="dash.rangoTodo" enBoton /></button>
+          </div>
+        </div>
+
+        <div className="rounded-xl p-3 mb-4 space-y-3" style={{ background: "#F7F6FB" }}>
+          <div>
+            <T k="dash.verGrafica" as="p" className="text-[10px] uppercase tracking-wide mb-1.5 block" style={{ color: "#8C89A0" }} />
+            <div className="flex flex-wrap gap-1.5">
+              {[["fecha", "dash.porFecha"], ["cliente", "dash.porCliente"], ["articulo", "dash.porArticulo"]].map(([v, k]) => (
+                <button key={v} onClick={() => setAgruparPor(v)} className="text-xs px-3 py-1.5 rounded-full"
+                  style={agruparPor === v ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#4A4760", border: "1px solid #E3E0EC" }}>
+                  <T k={k} enBoton />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <T k="dash.filtroCliente" as="span" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
+              <select value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)} className={inputCls} style={inputStyle}>
+                <option value="">{t("dash.todos")}</option>
+                {opcionesReporte.clientes.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <T k="dash.filtroArticulo" as="span" className="text-[10px] uppercase tracking-wide" style={{ color: "#8C89A0" }} />
+              <select value={filtroArticulo} onChange={(e) => setFiltroArticulo(e.target.value)} className={inputCls} style={inputStyle}>
+                <option value="">{t("dash.todos")}</option>
+                {opcionesReporte.articulos.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
           </div>
         </div>
 
@@ -1543,7 +1738,7 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
           <MiniStat label={<T k="dash.miniUtilidad" />} value={money(reporte.utilidad)} color={reporte.utilidad >= 0 ? "#2F8542" : "#B23B3B"} />
         </div>
 
-        <SalesChart dias={reporte.dias} />
+        {agruparPor === "fecha" ? <SalesChart dias={reporte.dias} /> : <BarrasChart barras={reporte.barras} />}
 
         {reporte.ventas.length === 0 ? (
           <T k="dash.sinVentas" as="p" className="text-sm py-6 text-center block" style={{ color: "#A9A6BA" }} />
@@ -1555,7 +1750,7 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
                 <div key={`${v.productoId}-${v.id}`} className="flex items-center justify-between gap-3 text-xs py-1.5 border-b last:border-0" style={{ borderColor: "#F6F5FA" }}>
                   <div className="min-w-0">
                     <p className="font-medium truncate">{v.nombre}</p>
-                    <p style={{ color: "#8C89A0" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })}</p>
+                    <p style={{ color: "#8C89A0" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })} · {v.cliente}</p>
                   </div>
                   <span className="font-medium flex-shrink-0" style={{ color: "var(--colorAcento)" }}>{money(v.precio * v.qty)}</span>
                 </div>
@@ -1564,6 +1759,29 @@ function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrden
           </div>
         )}
       </Panel>
+    </div>
+  );
+}
+
+// Gráfica de barras horizontales (ventas por cliente o por artículo).
+function BarrasChart({ barras }) {
+  if (!barras.length) return null;
+  const max = Math.max(...barras.map((b) => b.monto), 1);
+  const visibles = barras.slice(0, 15);
+  return (
+    <div className="rounded-xl p-3 space-y-2" style={{ background: "#F7F6FB" }}>
+      {visibles.map((b) => (
+        <div key={b.nombre} className="text-xs">
+          <div className="flex items-baseline justify-between gap-2 mb-0.5">
+            <span className="truncate" style={{ color: "#4A4760" }}>{b.nombre}</span>
+            <span className="flex-shrink-0 font-medium">{money(b.monto)} <span className="font-normal" style={{ color: "#A9A6BA" }}>· {b.piezas} pza</span></span>
+          </div>
+          <div className="h-2.5 rounded-full" style={{ background: "#EEEDF3" }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.max(2, (b.monto / max) * 100)}%`, background: "#9F86D0" }} />
+          </div>
+        </div>
+      ))}
+      {barras.length > visibles.length && <p className="text-[10px] pt-1" style={{ color: "#A9A6BA" }}>+{barras.length - visibles.length} más</p>}
     </div>
   );
 }
@@ -1597,12 +1815,31 @@ function SalesChart({ dias }) {
   );
 }
 
-function Panel({ title, icon, action, children }) {
+// Ojo discreto para ocultar / mostrar un recuadro del Dashboard.
+function BotonOcultar({ oculto, onAlternar }) {
+  if (!onAlternar) return null;
+  return (
+    <button type="button" onClick={onAlternar} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-40 hover:opacity-100 transition"
+      aria-label={oculto ? "Mostrar recuadro" : "Ocultar recuadro"} title={oculto ? "Mostrar" : "Ocultar"}>
+      {oculto ? <Eye size={13} color="#4A4760" /> : <EyeOff size={13} color="#4A4760" />}
+    </button>
+  );
+}
+
+function Panel({ title, icon, action, children, oculto, onAlternar }) {
+  if (oculto) {
+    return (
+      <div className="rounded-2xl border border-dashed px-4 py-2.5 flex items-center justify-between gap-2" style={{ borderColor: "#D9D5E6", background: "rgba(255,255,255,0.6)" }}>
+        <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#A9A6BA" }}>{title}</h3>
+        <BotonOcultar oculto onAlternar={onAlternar} />
+      </div>
+    );
+  }
   return (
     <div className="rounded-2xl border p-4" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
       <div className="flex items-center justify-between mb-3 gap-2">
         <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#4A4760" }}>{title}</h3>
-        {action || icon}
+        <div className="flex items-center gap-1.5">{action || icon}<BotonOcultar onAlternar={onAlternar} /></div>
       </div>
       {children}
     </div>
@@ -1610,14 +1847,23 @@ function Panel({ title, icon, action, children }) {
 }
 
 // `oscuro`: tarjetas de ventas, gastos y utilidad en lila más intenso.
-function KpiCard({ icon, label, value, sub, oscuro, valorColor }) {
+function KpiCard({ icon, label, value, sub, oscuro, valorColor, oculto, onAlternar }) {
+  if (oculto) {
+    return (
+      <div className="rounded-2xl border border-dashed px-3 py-2 flex items-center justify-between gap-2 self-start" style={{ borderColor: "#D9D5E6", background: "rgba(255,255,255,0.6)" }}>
+        <p className="text-[11px] truncate" style={{ color: "#A9A6BA" }}>{label}</p>
+        <BotonOcultar oculto onAlternar={onAlternar} />
+      </div>
+    );
+  }
   const c = oscuro
     ? { fondo: "#D9C9F0", borde: "#C4AEE6", icono: "#C3ABE8", iconoTxt: "#4B2E83", etiqueta: "#4B2E83", sub: "#5E4A86" }
     : { fondo: "#F6F2FC", borde: "#E8E1F5", icono: "#ECE4F7", iconoTxt: "var(--colorAcento)", etiqueta: "#8C89A0", sub: "#A9A6BA" };
   return (
-    <div className="rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: c.borde, background: c.fondo }}>
+    <div className="relative rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: c.borde, background: c.fondo }}>
+      <div className="absolute top-1.5 right-1.5"><BotonOcultar onAlternar={onAlternar} /></div>
       <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: c.icono, color: c.iconoTxt }}>{icon}</div>
-      <div className="min-w-0">
+      <div className="min-w-0 pr-4">
         <p className="text-[11px] leading-tight" style={{ color: c.etiqueta, fontWeight: oscuro ? 600 : 400 }}>{label}</p>
         <p className="font-display text-2xl leading-tight mt-0.5" style={{ color: valorColor || "#17152B" }}>{value}</p>
         <p className="text-[10px] mt-0.5" style={{ color: c.sub }}>{sub}</p>
@@ -1632,7 +1878,8 @@ const ESTADO_ORDEN = {
   cancelado: ["Cancelada", "#EEECF3", "#7C7990"],
 };
 
-function ResumenOrdenes({ pedidos, onVerOrdenes }) {
+function ResumenOrdenes({ pedidos, onVerOrdenes, onAprobarTodas, oculto, onAlternar }) {
+  const [aprobando, setAprobando] = useState(false);
   const { t } = useEdicion();
   const r = useMemo(() => {
     const por = (e) => pedidos.filter((p) => p.estado === e);
@@ -1646,7 +1893,7 @@ function ResumenOrdenes({ pedidos, onVerOrdenes }) {
   }, [pedidos]);
 
   return (
-    <Panel title={<T k="dash.ordenes" />} action={
+    <Panel oculto={oculto} onAlternar={onAlternar} title={<T k="dash.ordenes" />} action={
       <button onClick={onVerOrdenes} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}>
         <T k="dash.ordenesVer" enBoton /> <ArrowUpRight size={12} />
       </button>
@@ -1667,6 +1914,13 @@ function ResumenOrdenes({ pedidos, onVerOrdenes }) {
           <p className="font-display text-2xl leading-tight">{r.canc}</p>
         </div>
       </div>
+      {r.pend > 0 && (
+        <button type="button" disabled={aprobando}
+          onClick={async () => { setAprobando(true); try { await onAprobarTodas(); } finally { setAprobando(false); } }}
+          className="w-full mb-3 rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "#2F8542", color: "#fff" }}>
+          <Check size={15} /> {aprobando ? t("dash.aprobando") : t("dash.aprobarTodas", { n: r.pend })}
+        </button>
+      )}
       {r.recientes.length === 0 ? (
         <T k="dash.ordenesVacio" as="p" className="text-sm py-6 text-center block" style={{ color: "#A9A6BA" }} />
       ) : (
@@ -2221,7 +2475,7 @@ function SettingsForm({ settings, onSave, products, onExportBackup, onImportBack
         <T k="config.compartirTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
         <T k="config.compartirTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
         <div className="flex gap-2 mb-3">
-          <input value={shareUrl} onChange={(e) => setShareUrl(e.target.value)} className={inputCls + " mt-0"} style={inputStyle} placeholder="https://boutique-martita.vercel.app" />
+          <input value={shareUrl} onChange={(e) => setShareUrl(e.target.value)} className={inputCls + " mt-0"} style={inputStyle} placeholder="https://brenda-negocios.vercel.app" />
           <button type="button" onClick={copyLink} className="px-4 rounded-xl text-xs flex-shrink-0" style={{ background: "#ECE8F6", color: "#4A4760" }}>{copied ? t("config.copiado") : t("config.copiar")}</button>
         </div>
         {shareUrl && (
