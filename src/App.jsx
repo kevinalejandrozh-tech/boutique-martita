@@ -24,7 +24,7 @@ import {
   COLONIAS_DOC, EMBALAJE_DOC, REGISTROS_QUERY, COLONIAS_IZCALLI,
   crearPedido, confirmarPedido, cancelarPedido, guardarColonias,
 } from "./negocio";
-import { IconoCarritoMas, CantidadModal, SugerenciaModal, BarraCarrito, Checkout, AvisoSalida } from "./Compra";
+import { IconoCarritoMas, Contador, CantidadModal, SugerenciaModal, BarraCarrito, Checkout, AvisoSalida } from "./Compra";
 import { OrdenCompraModal, ListaOC, OrdenesVentaTab, FinanzasTab, ColoniasModal, ConfirmarPedidoModal } from "./Administracion";
 
 // ---------------------------------------------------------------------------
@@ -627,9 +627,14 @@ export default function App() {
   const articulosTxt = (n) => t(n === 1 ? "pedido.articulo" : "pedido.articulos", { n });
 
   // Al agregar: se sugiere el producto configurado (si hay piezas y no está ya en el carrito).
+  const abrirCantidad = (p, opciones = {}) => setCantidadTarget({ p, grande: Boolean(opciones.grande) });
   const confirmarCantidad = (qty) => {
-    const p = cantidadTarget;
+    const p = cantidadTarget?.p;
     setCantidadTarget(null);
+    agregarConCantidad(p, qty);
+  };
+  // Agrega al carrito y, si aplica, sugiere el producto configurado.
+  const agregarConCantidad = (p, qty) => {
     if (!p || !addToCart(p, qty)) return;
     const objetivo = normalizar(t("compra.sugeridoNombre"));
     const sp = objetivo && products.find((x) => normalizar(x.nombre) === objetivo);
@@ -1055,7 +1060,8 @@ export default function App() {
           <ClienteView
             products={filtered} query={query} setQuery={setQuery}
             activeCat={activeCat} setActiveCat={setActiveCat} categorias={categorias}
-            onAdd={setCantidadTarget} loading={loading} total={visibles.length}
+            onAdd={abrirCantidad} onAgregarDirecto={agregarConCantidad} disponibleDe={(p) => Math.max(0, p.cantidad - enCarritoDe(p.id))}
+            loading={loading} total={visibles.length}
             settings={settings} portada={imagenes.portada?.src}
             acciones={{
               campo: editarCampoProducto, foto: editarFotoProducto, form: openEditForm, nuevo: openNewForm,
@@ -1088,7 +1094,8 @@ export default function App() {
         </footer>
 
         {cantidadTarget && (
-          <CantidadModal p={cantidadTarget} maximo={Math.max(0, stockDe(cantidadTarget.id) - enCarritoDe(cantidadTarget.id))}
+          <CantidadModal key={cantidadTarget.p.id} p={cantidadTarget.p} grande={cantidadTarget.grande}
+            maximo={Math.max(0, stockDe(cantidadTarget.p.id) - enCarritoDe(cantidadTarget.p.id))}
             onConfirmar={confirmarCantidad} onCerrar={() => setCantidadTarget(null)} />
         )}
         {sugerencia && (
@@ -1209,7 +1216,7 @@ export default function App() {
 // ---------------------------------------------------------------------------
 // Vista cliente
 // ---------------------------------------------------------------------------
-function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categorias, onAdd, loading, total, settings, portada, acciones }) {
+function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categorias, onAdd, onAgregarDirecto, disponibleDe, loading, total, settings, portada, acciones }) {
   const { t, editando } = useEdicion();
   const tam = settings.tarjetaTam || "normal";
   const [orden, setOrden] = usePref("catalogoOrden", "recomendado");
@@ -1316,7 +1323,10 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
                     <Plus size={18} /> Agregar producto
                   </button>
                 )}
-                {ordenados.map((p) => <FilaCatalogo key={p.id} p={p} onAdd={() => onAdd(p)} acciones={accionesDe(p)} />)}
+                {ordenados.map((p) => (
+                  <FilaCatalogo key={p.id} p={p} disponible={disponibleDe(p)} onVerFoto={() => onAdd(p, { grande: true })}
+                    onAgregar={(qty) => onAgregarDirecto(p, qty)} acciones={accionesDe(p)} />
+                ))}
               </div>
             ) : (
             <div className={`${GRID_TARJETAS[tam] || GRID_TARJETAS.normal} pt-4`}>
@@ -1326,7 +1336,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
                 </button>
               )}
               {ordenados.map((p) => (
-                <ProductCard key={p.id} p={p} onAdd={() => onAdd(p)} aspecto={aspectoCss(settings.fotoAspecto)} tam={tam} acciones={accionesDe(p)} />
+                <ProductCard key={p.id} p={p} onAdd={() => onAdd(p)} onVerFoto={() => onAdd(p, { grande: true })} aspecto={aspectoCss(settings.fotoAspecto)} tam={tam} acciones={accionesDe(p)} />
               ))}
             </div>
             )
@@ -1345,18 +1355,20 @@ const ESTILO_TARJETA = {
   grande: { radio: "rounded-[20px]", pad: "p-2.5 pr-8", nombre: "text-xs sm:text-sm", cat: "text-[10px]", boton: "w-9 h-9", icono: 15, mt: "-mt-[18px]", precio: "text-base", extra: "text-[11px]", info: "w-6 h-6 top-2 right-2", infoIcono: 12 },
 };
 
-function ProductCard({ p, onAdd, aspecto, tam = "normal", acciones }) {
+function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones }) {
   const { t, editando } = useEdicion();
   const [showLoc, setShowLoc] = useState(false);
   const e = ESTILO_TARJETA[tam] || ESTILO_TARJETA.normal;
-  // En modo tienda, tocar la foto o el texto abre la ventana de piezas.
+  // En modo tienda, tocar la foto la muestra en grande junto con la ventana de piezas;
+  // tocar el texto abre la ventana de piezas.
   const abrir = editando ? undefined : onAdd;
-  const tecla = (ev) => { if (!editando && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onAdd(); } };
+  const verFoto = editando ? undefined : onVerFoto;
+  const tecla = (ev) => { if (!editando && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onVerFoto(); } };
   return (
     <div className="tarjeta-producto flex flex-col">
       <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${e.radio} ${editando ? "" : "cursor-pointer"}`}
         style={{ background: "#EEEDF3", aspectRatio: aspecto }}
-        onClick={abrir} onKeyDown={tecla} role={editando ? undefined : "button"} tabIndex={editando ? undefined : 0} aria-label={editando ? undefined : `${t("tarjeta.agregar")}: ${p.nombre}`}>
+        onClick={verFoto} onKeyDown={tecla} role={editando ? undefined : "button"} tabIndex={editando ? undefined : 0} aria-label={editando ? undefined : `${t("tarjeta.agregar")}: ${p.nombre}`}>
         {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={18} color="#BDBACC" />}
         {/* Nombre y categoría sobre la foto, como en un catálogo editorial */}
         <div className={`absolute inset-x-0 top-0 ${e.pad} pointer-events-none`}
@@ -1425,27 +1437,45 @@ function ProductCard({ p, onAdd, aspecto, tam = "normal", acciones }) {
   );
 }
 
-// Renglón del catálogo en modo lista.
-function FilaCatalogo({ p, onAdd, acciones }) {
+// Renglón del catálogo en modo lista: piezas y carrito en el mismo renglón.
+function FilaCatalogo({ p, disponible, onVerFoto, onAgregar, acciones }) {
   const { t, editando } = useEdicion();
-  const abrir = editando ? acciones.form : onAdd;
+  const [qty, setQty] = useState(1);
+  const [listo, setListo] = useState(false);
+  const max = Math.max(1, disponible);
+  const agregar = () => {
+    if (disponible <= 0) return;
+    onAgregar(Math.min(qty, disponible));
+    setQty(1); setListo(true); setTimeout(() => setListo(false), 1200);
+  };
   return (
-    <div role="button" tabIndex={0} onClick={abrir} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); abrir(); } }}
-      className="flex items-center gap-3 rounded-2xl border p-2 pr-3 cursor-pointer transition hover:shadow-sm" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
-      <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EEEDF3" }}>
+    <div className="flex items-center gap-2.5 rounded-2xl border p-2 pr-2.5" style={{ borderColor: "#E6E3EE", background: "#fff" }}>
+      <button type="button" onClick={editando ? acciones.form : onVerFoto} className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "#EEEDF3" }}
+        aria-label={editando ? "Editar producto" : `Ver foto de ${p.nombre}`}>
         {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={16} color="#BDBACC" />}
-      </div>
+      </button>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: "#17152B" }}>{p.nombre}</p>
         <p className="text-[11px] truncate" style={{ color: "#8C89A0" }}>
+          <span className="font-display text-sm mr-1" style={{ color: "#17152B" }}>{money(p.precioVenta)}</span>
           {[p.categoria, detalleDe(p), t("catalogo.piezas", { n: p.cantidad })].filter(Boolean).join(" · ")}
         </p>
       </div>
-      <span className="font-display text-base flex-shrink-0" style={{ color: "#17152B" }}>{money(p.precioVenta)}</span>
-      <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" aria-hidden="true"
-        style={editando ? { background: "var(--colorAcento)", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
-        {editando ? <Pencil size={13} /> : <IconoCarritoMas size={14} />}
-      </span>
+      {editando ? (
+        <button type="button" onClick={acciones.form} className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--colorAcento)", color: "#fff" }} aria-label="Editar producto">
+          <Pencil size={13} />
+        </button>
+      ) : (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {disponible > 0 && <Contador valor={Math.min(qty, max)} max={max} onCambiar={setQty} compacto />}
+          <button type="button" onClick={agregar} disabled={disponible <= 0}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition hover:scale-105 disabled:opacity-40"
+            style={listo ? { background: "#2F8542", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}
+            aria-label={`${t("tarjeta.agregar")}: ${p.nombre}`} title={disponible > 0 ? t("tarjeta.agregar") : t("tarjeta.limite", { n: p.cantidad })}>
+            {listo ? <Check size={15} /> : <IconoCarritoMas size={14} />}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

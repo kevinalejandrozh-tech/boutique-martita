@@ -27,9 +27,9 @@ export function IconoCarritoMas({ size = 18 }) {
 }
 
 // Contador − / número / +. El número también se puede escribir a mano.
-function Contador({ valor, min = 1, max, onCambiar, grande }) {
+export function Contador({ valor, min = 1, max, onCambiar, grande, compacto }) {
   const [texto, setTexto] = useState(null); // null = muestra `valor`
-  const tam = grande ? "w-11 h-11 text-lg" : "w-8 h-8 text-sm";
+  const tam = grande ? "w-11 h-11 text-lg" : compacto ? "w-7 h-7 text-xs" : "w-8 h-8 text-sm";
   const fijar = (n) => onCambiar(Math.max(min, Math.min(max, n)));
   const confirmar = () => {
     if (texto !== null) {
@@ -39,7 +39,7 @@ function Contador({ valor, min = 1, max, onCambiar, grande }) {
     setTexto(null);
   };
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center ${compacto ? "gap-1" : "gap-2"}`} onClick={(e) => e.stopPropagation()}>
       <button type="button" onClick={() => fijar(valor - 1)} disabled={valor <= min}
         className={`${tam} rounded-full border flex items-center justify-center disabled:opacity-35`} style={{ borderColor: "#E3E0EC", background: "#fff" }} aria-label="Menos">
         <Minus size={grande ? 16 : 13} />
@@ -50,7 +50,7 @@ function Contador({ valor, min = 1, max, onCambiar, grande }) {
         onChange={(e) => setTexto(e.target.value.replace(/[^0-9]/g, ""))}
         onBlur={confirmar}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
-        className={`${grande ? "w-16 h-11 text-2xl font-display" : "w-10 h-8 text-sm font-medium"} text-center rounded-xl border border-transparent hover:border-[#E3E0EC] focus:border-[#B9A7DD] outline-none bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`} />
+        className={`${grande ? "w-16 h-11 text-2xl font-display" : compacto ? "w-8 h-7 text-sm font-medium" : "w-10 h-8 text-sm font-medium"} text-center rounded-xl border border-transparent hover:border-[#E3E0EC] focus:border-[#B9A7DD] outline-none bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`} />
       <button type="button" onClick={() => fijar(valor + 1)} disabled={valor >= max}
         className={`${tam} rounded-full border flex items-center justify-center disabled:opacity-35`} style={{ borderColor: "#E3E0EC", background: "#fff" }} aria-label="Más">
         <Plus size={grande ? 16 : 13} />
@@ -76,12 +76,26 @@ function FichaProducto({ p }) {
 // ---------------------------------------------------------------------------
 // 1) ¿Cuántas piezas?
 // ---------------------------------------------------------------------------
-export function CantidadModal({ p, maximo, onConfirmar, onCerrar }) {
+// `grande`: muestra la foto del artículo en grande (al tocar la imagen en la cuadrícula).
+export function CantidadModal({ p, maximo, grande, onConfirmar, onCerrar }) {
   const { t } = useEdicion();
   const [qty, setQty] = useState(1);
   return (
-    <Modal onClose={onCerrar} title={<T k="compra.cuantasTitulo" />}>
-      <FichaProducto p={p} />
+    <Modal onClose={onCerrar} title={<T k="compra.cuantasTitulo" />} wide={grande}>
+      {grande && p.imagen ? (
+        <>
+          <div className="rounded-2xl overflow-hidden flex items-center justify-center -mt-1 mb-3" style={{ background: "#EEEDF3" }}>
+            <img src={p.imagen} alt={p.nombre} className="w-full h-auto max-h-[52vh] object-contain block" />
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-display text-lg leading-snug">{p.nombre}</p>
+              {[p.talla, p.color].some(Boolean) && <p className="text-xs" style={{ color: "#8C89A0" }}>{[p.talla, p.color].filter(Boolean).join(" · ")}</p>}
+            </div>
+            <p className="font-display text-xl flex-shrink-0">{money(p.precioVenta)}</p>
+          </div>
+        </>
+      ) : <FichaProducto p={p} />}
       {maximo > 0 ? (
         <>
           <div className="flex items-center justify-between mt-5">
