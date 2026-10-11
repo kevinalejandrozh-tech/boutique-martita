@@ -2505,7 +2505,7 @@ function SettingsForm({ settings, onSave, products, onExportBackup, onImportBack
         <T k="config.compartirTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
         <T k="config.compartirTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
         <div className="flex gap-2 mb-3">
-          <input value={shareUrl} onChange={(e) => setShareUrl(e.target.value)} className={inputCls + " mt-0"} style={inputStyle} placeholder="https://brenda-negocios.vercel.app" />
+          <input value={shareUrl} onChange={(e) => setShareUrl(e.target.value)} className={inputCls + " mt-0"} style={inputStyle} placeholder="https://abc-market-mx.vercel.app" />
           <button type="button" onClick={copyLink} className="px-4 rounded-xl text-xs flex-shrink-0" style={{ background: "#ECE8F6", color: "#4A4760" }}>{copied ? t("config.copiado") : t("config.copiar")}</button>
         </div>
         {shareUrl && (
