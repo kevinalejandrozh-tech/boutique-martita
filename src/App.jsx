@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import {
   Search, Plus, Trash2, Pencil, Download, Lock, Unlock,
   ShoppingBag, LayoutDashboard, Settings, ImageOff,
-  Package, DollarSign, Send, Check, Info,
+  Package, DollarSign, Check, Info,
   Filter, Calendar, Clock, Truck, Tag, BarChart3, ShieldCheck, RotateCcw,
-  Eye, EyeOff, Minus, Undo2, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp, ArrowUpRight,
+  Eye, EyeOff, Minus, Undo2, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
+  ClipboardList, MapPin, Receipt,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -18,17 +19,17 @@ import {
   EdicionCtx, useEdicion, T, Editable, EditBadge, BotonFoto, EditorCampo, BarraEdicion,
   TextosPanel, CategoriasPanel, DisenoPanel, TamanoLogo,
 } from "./edicion";
+import {
+  EMPTY_PRODUCT, normalizarProducto, normalizar, whatsappUrl, formatoFolio, conceptoNombre,
+  COLONIAS_DOC, EMBALAJE_DOC, REGISTROS_QUERY, COLONIAS_IZCALLI,
+  crearPedido, confirmarPedido, cancelarPedido, guardarColonias,
+} from "./negocio";
+import { IconoCarritoMas, CantidadModal, SugerenciaModal, BarraCarrito, Checkout, AvisoSalida } from "./Compra";
+import { OrdenCompraModal, ListaOC, OrdenesVentaTab, FinanzasTab, ColoniasModal } from "./Administracion";
 
 // ---------------------------------------------------------------------------
 // Constantes
 // ---------------------------------------------------------------------------
-const EMPTY_PRODUCT = {
-  nombre: "", categoria: "", subcategoria: "", color: "", talla: "",
-  material: "", genero: "", grupo: "", precioVenta: "", precioCompra: "", cantidad: 1,
-  ubicacion: "", imagen: null, disponible: true, oculto: false,
-  fechaCompra: "", proveedor: "", vendidaAt: null, ventas: [],
-};
-
 const PRODUCTS_COL = collection(db, "products");
 const SETTINGS_COL = collection(db, "settings");
 const SETTINGS_DOC = doc(db, "settings", "store");
@@ -99,25 +100,6 @@ function fmtDateTime(ts) {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
-// Inventario por piezas: `cantidad` es el stock actual y `ventas` el historial.
-// Los productos guardados con la versión anterior (Disponible/Vendida) se leen así:
-// - Vendida  → stock 0 y una venta con su fecha (se puede deshacer con el PIN).
-// - Disponible → stock = cantidad registrada.
-function normalizarProducto(p) {
-  if (Array.isArray(p.ventas)) {
-    const n = Number(p.cantidad);
-    return { ...p, cantidad: Number.isFinite(n) ? Math.max(0, n) : 0 };
-  }
-  const n = Number(p.cantidad) > 0 ? Math.floor(Number(p.cantidad)) : 1;
-  if (p.disponible === false) {
-    return {
-      ...p, cantidad: 0,
-      ventas: [{ id: "anterior", at: p.vendidaAt || p.createdAt || 0, qty: n, precio: Number(p.precioVenta) || 0, costo: Number(p.precioCompra) || 0 }],
-    };
-  }
-  return { ...p, cantidad: n, ventas: [] };
 }
 
 const piezasVendidas = (p) => (p.ventas || []).reduce((s, v) => s + (Number(v.qty) || 0), 0);
@@ -218,7 +200,19 @@ export default function App() {
   const [activeCat, setActiveCat] = useState("Todas");
 
   const [cart, setCart] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
+  const [cantidadTarget, setCantidadTarget] = useState(null);
+  const [sugerencia, setSugerencia] = useState(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [compra, setCompra] = useState({ nombre: "", telefono: "", metodo: "", coloniaId: "", calle: "" });
+  const [avisoSalida, setAvisoSalida] = useState(false);
+  const saliendoRef = useRef(false);
+
+  // Negocio: colonias (todos), pedidos/gastos/órdenes de compra y embalaje (solo administradora)
+  const [colonias, setColonias] = useState(COLONIAS_IZCALLI);
+  const [registros, setRegistros] = useState([]);
+  const [embalaje, setEmbalaje] = useState([]);
+  const [ocAbierta, setOcAbierta] = useState(null); // {} = nueva
+  const [coloniasOpen, setColoniasOpen] = useState(false);
 
   const [ventaTarget, setVentaTarget] = useState(null);
   const [deshacer, setDeshacer] = useState(null);
@@ -266,9 +260,29 @@ export default function App() {
       ...Object.entries(IMAGEN_DOC).map(([clave, ref]) => onSnapshot(ref, (snap) => {
         setImagenes((i) => ({ ...i, [clave]: snap.exists() && snap.data().src ? snap.data() : null }));
       }, () => {})),
+      onSnapshot(COLONIAS_DOC, (snap) => {
+        const lista = snap.exists() ? snap.data().lista : null;
+        setColonias(Array.isArray(lista) ? lista : COLONIAS_IZCALLI);
+      }, () => {}),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const unsubs = [
+      onSnapshot(REGISTROS_QUERY, (snap) => setRegistros(snap.docs.map((d) => d.data())), (e) => console.error(e)),
+      onSnapshot(EMBALAJE_DOC, (snap) => {
+        const lista = snap.exists() ? snap.data().lista : null;
+        setEmbalaje(Array.isArray(lista) ? lista : []);
+      }, () => {}),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [isAdmin]);
+
+  const pedidos = useMemo(() => registros.filter((r) => r.tipo === "pedido"), [registros]);
+  const gastos = useMemo(() => registros.filter((r) => r.tipo === "gasto"), [registros]);
+  const ordenesCompra = useMemo(() => registros.filter((r) => r.tipo === "oc"), [registros]);
 
   // Guarda en el dispositivo lo necesario para pintar la tienda al instante (sin el PIN).
   useEffect(() => {
@@ -550,44 +564,96 @@ export default function App() {
   // -------------------------------------------------------------------
   // Carrito (no permite pedir más piezas de las que hay)
   // -------------------------------------------------------------------
-  const addToCart = (product) => {
-    const enCarrito = cart.find((i) => i.id === product.id)?.qty || 0;
-    if (enCarrito >= product.cantidad) {
-      avisar(t("tarjeta.limite", { n: product.cantidad }), "error");
-      return false;
-    }
+  const stockDe = useCallback((id) => products.find((p) => p.id === id)?.cantidad || 0, [products]);
+  const enCarritoDe = (id) => cart.find((i) => i.id === id)?.qty || 0;
+
+  const addToCart = (product, qty) => {
+    const n = Math.min(qty, product.cantidad - enCarritoDe(product.id));
+    if (n <= 0) { avisar(t("tarjeta.limite", { n: product.cantidad }), "error"); return false; }
     setCart((c) => {
       const existing = c.find((i) => i.id === product.id);
-      if (existing) return c.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1 } : i));
-      return [...c, { id: product.id, nombre: product.nombre, detalle: detalleDe(product), precioVenta: product.precioVenta, qty: 1 }];
+      if (existing) return c.map((i) => (i.id === product.id ? { ...i, qty: i.qty + n } : i));
+      return [...c, { id: product.id, nombre: product.nombre, detalle: detalleDe(product), precioVenta: product.precioVenta, qty: n }];
     });
     return true;
   };
-  const updateQty = (id, delta) => {
-    if (delta > 0) {
-      const p = products.find((x) => x.id === id);
-      const item = cart.find((i) => i.id === id);
-      if (p && item && item.qty + delta > p.cantidad) { avisar(t("tarjeta.limite", { n: p.cantidad }), "error"); return; }
-    }
-    setCart((c) => c
-      .map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
-      .filter((i) => i.qty > 0));
+  const setQty = (id, qty) => {
+    const max = stockDe(id);
+    setCart((c) => c.map((i) => (i.id === id ? { ...i, qty: Math.max(1, Math.min(qty, Math.max(max, 1))) } : i)));
   };
+  const quitarDelCarrito = (id) => setCart((c) => c.filter((i) => i.id !== id));
   const cartTotal = cart.reduce((s, i) => s + (Number(i.precioVenta) || 0) * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const articulosTxt = (n) => t(n === 1 ? "pedido.articulo" : "pedido.articulos", { n });
 
-  const sendOrderWhatsApp = () => {
-    const lineas = cart.map((i) => t("pedido.linea", {
-      cantidad: i.qty, nombre: i.nombre, detalle: i.detalle ? ` (${i.detalle})` : "", subtotal: money(i.precioVenta * i.qty),
-    }));
-    const text = t("pedido.mensaje", { tienda: settings.nombre, lineas: lineas.join("\n"), total: money(cartTotal), articulos: articulosTxt(cartCount) });
-    const phone = (settings.whatsapp || "").replace(/\D/g, "");
-    const url = phone
-      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+  // Al agregar: se sugiere el producto configurado (si hay piezas y no está ya en el carrito).
+  const confirmarCantidad = (qty) => {
+    const p = cantidadTarget;
+    setCantidadTarget(null);
+    if (!p || !addToCart(p, qty)) return;
+    const objetivo = normalizar(t("compra.sugeridoNombre"));
+    const sp = objetivo && products.find((x) => normalizar(x.nombre) === objetivo);
+    if (sp && sp.id !== p.id && !sp.oculto && sp.cantidad > 0 && !enCarritoDe(sp.id)) setSugerencia(sp);
+    else avisar(t("compra.agregado"));
   };
+
+  const terminarCompra = () => {
+    setCheckoutOpen(false);
+    setCompra((c) => ({ ...c, metodo: "", coloniaId: "", calle: "" }));
+  };
+
+  // Aviso al salir o recargar con un pedido en curso.
+  const pedidoEnCurso = mode === "cliente" && !editando && cart.length > 0;
+  useEffect(() => {
+    if (!pedidoEnCurso) return undefined;
+    const antesDeSalir = (e) => { if (saliendoRef.current) return; e.preventDefault(); e.returnValue = ""; };
+    const atras = () => {
+      if (saliendoRef.current) return;
+      window.history.pushState({ bmPedido: true }, "");
+      setAvisoSalida(true);
+    };
+    window.addEventListener("beforeunload", antesDeSalir);
+    window.history.pushState({ bmPedido: true }, "");
+    window.addEventListener("popstate", atras);
+    return () => {
+      window.removeEventListener("beforeunload", antesDeSalir);
+      window.removeEventListener("popstate", atras);
+      if (!saliendoRef.current && window.history.state?.bmPedido) window.history.back();
+    };
+  }, [pedidoEnCurso]);
+
+  const salirSinPedido = () => {
+    saliendoRef.current = true;
+    setAvisoSalida(false);
+    window.history.go(-2);
+    setTimeout(() => { setCart([]); setCheckoutOpen(false); saliendoRef.current = false; }, 600);
+  };
+
+  // -------------------------------------------------------------------
+  // Órdenes de venta
+  // -------------------------------------------------------------------
+  const mensajeCliente = (p) => t("compra.mensajeCliente", { nombre: (p.nombre || "").trim().split(" ")[0] || p.nombre });
+
+  const confirmarOrdenVenta = async (p) => {
+    if (!window.confirm(`¿Confirmar ${formatoFolio("PV", p.folio)} de ${p.nombre}? Se descontarán las piezas y se registrará la venta.`)) return;
+    // Se abre la ventana antes de esperar a la base de datos para que el navegador no la bloquee.
+    const ventana = window.open("", "_blank");
+    try {
+      await confirmarPedido(p);
+      const url = whatsappUrl(p.telefono, mensajeCliente(p));
+      if (ventana) ventana.location.href = url; else window.location.href = url;
+      avisar(`${formatoFolio("PV", p.folio)} confirmado`);
+    } catch (e) {
+      if (ventana) ventana.close();
+      console.error(e);
+      avisar(e?.message || t("general.errorGuardar"), "error");
+    }
+  };
+  const cancelarOrdenVenta = async (p) => {
+    if (!window.confirm(`¿Cancelar ${formatoFolio("PV", p.folio)} de ${p.nombre}?`)) return;
+    try { await cancelarPedido(p); avisar("Pedido cancelado"); } catch { avisar(t("general.errorGuardar"), "error"); }
+  };
+  const whatsAppOrden = (p) => window.open(whatsappUrl(p.telefono, mensajeCliente(p)), "_blank");
 
   // -------------------------------------------------------------------
   // Admin: PIN y modo edición
@@ -597,6 +663,7 @@ export default function App() {
     setPinModal(false); setPinInput(""); setPinError("");
     if (conEdicion) { setEditando(true); setMode("cliente"); }
     else setMode("admin");
+    window.scrollTo({ top: 0 });
   };
 
   const entrarEdicion = () => { setEditando(true); setMode("cliente"); window.scrollTo({ top: 0 }); };
@@ -750,6 +817,15 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Inventario");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ventas.length ? ventas : [{ Fecha: "", Producto: "" }]), "Ventas");
+    const hojaPedidos = [...pedidos].sort((x, y) => x.folio - y.folio).map((p) => ({
+      Folio: formatoFolio("PV", p.folio), Fecha: fmtDateTime(p.createdAt), Estado: p.estado, Cliente: p.nombre, Teléfono: p.telefono,
+      Colonia: p.colonia, Municipio: p.municipio, Dirección: p.direccion, "Método de pago": p.metodoPago,
+      Productos: p.subtotal, Envío: p.envio, "Cargo terminal": p.cargoTarjeta, Total: p.total,
+      Artículos: (p.items || []).map((i) => `${i.qty}x ${i.nombre}`).join(", "),
+    }));
+    const hojaGastos = gastos.map((g) => ({ Fecha: g.fecha, Concepto: conceptoNombre(g.concepto), Descripción: g.descripcion, Monto: g.monto, Origen: g.origen }));
+    if (hojaPedidos.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaPedidos), "Pedidos");
+    if (hojaGastos.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaGastos), "Gastos");
     XLSX.writeFile(wb, `inventario-${settings.nombre.replace(/\s+/g, "_")}.xlsx`);
   };
 
@@ -885,6 +961,9 @@ export default function App() {
               </button>
             </div>
           </div>
+          {vistaCliente && !editando && cartCount > 0 && (
+            <BarraCarrito articulos={articulosTxt(cartCount)} total={cartTotal} onEnviar={() => setCheckoutOpen(true)} />
+          )}
           {editando && (
             <BarraEdicion
               vista={mode}
@@ -907,7 +986,7 @@ export default function App() {
           <ClienteView
             products={filtered} query={query} setQuery={setQuery}
             activeCat={activeCat} setActiveCat={setActiveCat} categorias={categorias}
-            onAdd={addToCart} loading={loading} total={visibles.length}
+            onAdd={setCantidadTarget} loading={loading} total={visibles.length}
             settings={settings} portada={imagenes.portada?.src}
             acciones={{
               campo: editarCampoProducto, foto: editarFotoProducto, form: openEditForm, nuevo: openNewForm,
@@ -921,11 +1000,16 @@ export default function App() {
             onVender={setVentaTarget} onOcultar={alternarOculto}
             onDeshacer={(p, v) => setDeshacer({ p, v })} onFoto={editarFotoProducto}
             onExport={exportExcel}
+            negocio={{
+              pedidos, gastos, ordenesCompra, embalaje, avisar,
+              onConfirmarPedido: confirmarOrdenVenta, onCancelarPedido: cancelarOrdenVenta, onWhatsApp: whatsAppOrden,
+              onAbrirOC: setOcAbierta, onNuevaOC: () => setOcAbierta({}), onColonias: () => setColoniasOpen(true),
+            }}
           />
         )}
 
         <footer style={{ background: "var(--colorPie)", color: "var(--colorPieTexto)" }}>
-          <div className={`max-w-5xl mx-auto px-4 pt-10 ${vistaCliente && cartCount > 0 ? "pb-28" : "pb-10"} grid gap-4 sm:grid-cols-2 sm:items-end`}>
+          <div className={`max-w-5xl mx-auto px-4 pt-10 pb-10 grid gap-4 sm:grid-cols-2 sm:items-end`}>
             <div>
               <p className="etiqueta-seccion">{settings.nombre}</p>
               <T k="pie.texto" as="p" className="font-display text-2xl leading-tight mt-1 block" />
@@ -934,46 +1018,31 @@ export default function App() {
           </div>
         </footer>
 
-        {vistaCliente && !editando && cartCount > 0 && (
-          <button onClick={() => setCartOpen(true)}
-            className="fixed bottom-4 left-4 right-4 max-w-md mx-auto rounded-full shadow-xl pl-6 pr-1.5 py-1.5 flex items-center justify-between gap-3 z-40"
-            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)", boxShadow: "0 0 0 1px rgba(255,255,255,0.2), 0 12px 32px rgba(23,21,43,0.35)" }}>
-            <span className="flex items-center gap-2 text-sm font-medium"><ShoppingBag size={17} />{articulosTxt(cartCount)} · {money(cartTotal)}</span>
-            <span className="w-11 h-11 rounded-full flex items-center justify-center border" style={{ borderColor: "currentColor" }}><ArrowUpRight size={18} /></span>
-          </button>
+        {cantidadTarget && (
+          <CantidadModal p={cantidadTarget} maximo={Math.max(0, stockDe(cantidadTarget.id) - enCarritoDe(cantidadTarget.id))}
+            onConfirmar={confirmarCantidad} onCerrar={() => setCantidadTarget(null)} />
         )}
+        {sugerencia && (
+          <SugerenciaModal p={sugerencia} maximo={Math.max(1, stockDe(sugerencia.id) - enCarritoDe(sugerencia.id))}
+            onSi={(qty) => { addToCart(sugerencia, qty); setSugerencia(null); avisar(t("compra.agregado")); }}
+            onNo={() => setSugerencia(null)} />
+        )}
+        {checkoutOpen && (
+          <Checkout cart={cart} stockDe={stockDe} colonias={colonias} compra={compra} setCompra={setCompra}
+            onQty={setQty} onQuitar={quitarDelCarrito}
+            onEnviar={async (datos) => { const folio = await crearPedido(datos); setCart([]); return folio; }}
+            onCerrar={() => setCheckoutOpen(false)} onTerminar={terminarCompra} />
+        )}
+        {avisoSalida && <AvisoSalida onSalir={salirSinPedido} onContinuar={() => setAvisoSalida(false)} />}
 
-        {cartOpen && (
-          <Modal onClose={() => setCartOpen(false)} title={<T k="pedido.titulo" />}>
-            {cart.length === 0 ? (
-              <T k="pedido.vacio" as="p" className="text-sm py-8 text-center" style={{ color: "#8C89A0" }} />
-            ) : (
-              <div className="space-y-3">
-                {cart.map((i) => (
-                  <div key={i.id} className="flex items-center justify-between gap-3 py-2 border-b" style={{ borderColor: "#EEEDF3" }}>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{i.nombre}</p>
-                      <p className="text-xs" style={{ color: "#8C89A0" }}>
-                        {[i.detalle, t("pedido.cadaUno", { precio: money(i.precioVenta) })].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button onClick={() => updateQty(i.id, -1)} className="w-7 h-7 rounded-full border flex items-center justify-center" style={{ borderColor: "#E3E0EC" }}>−</button>
-                      <span className="w-5 text-center text-sm">{i.qty}</span>
-                      <button onClick={() => updateQty(i.id, 1)} className="w-7 h-7 rounded-full border flex items-center justify-center" style={{ borderColor: "#E3E0EC" }}>+</button>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between pt-2">
-                  <span className="font-medium text-sm"><T k="pedido.total" /> ({articulosTxt(cartCount)})</span>
-                  <span className="font-display text-xl">{money(cartTotal)}</span>
-                </div>
-                <button onClick={sendOrderWhatsApp} className="w-full mt-2 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium" style={{ background: "#25D366", color: "#fff" }}>
-                  <Send size={15} /> <T k="pedido.enviar" />
-                </button>
-              </div>
-            )}
-          </Modal>
+        {ocAbierta && (
+          <OrdenCompraModal oc={ocAbierta.id ? ocAbierta : null} products={products} categorias={categorias}
+            onCerrar={() => setOcAbierta(null)} avisar={avisar} />
+        )}
+        {coloniasOpen && (
+          <ColoniasModal lista={colonias}
+            onGuardar={async (lista) => { try { await guardarColonias(lista); avisar("Catálogo de colonias guardado"); } catch (e) { avisar(t("general.errorGuardar"), "error"); throw e; } }}
+            onCerrar={() => setColoniasOpen(false)} />
         )}
 
         {ventaTarget && (
@@ -1149,7 +1218,6 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
 
 function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
   const { t, editando } = useEdicion();
-  const [added, setAdded] = useState(false);
   const [showLoc, setShowLoc] = useState(false);
   const boton = compacto ? "w-9 h-9" : "w-11 h-11";
   return (
@@ -1205,11 +1273,11 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
             <Pencil size={15} />
           </button>
         ) : (
-          <button onClick={() => { if (onAdd()) { setAdded(true); setTimeout(() => setAdded(false), 1200); } }}
+          <button onClick={onAdd}
             className={`${boton} rounded-full flex items-center justify-center transition hover:scale-105`}
-            style={{ ...(added ? { background: "#2F8542", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }), boxShadow: "0 0 0 4px var(--colorFondo)" }}
+            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)", boxShadow: "0 0 0 4px var(--colorFondo)" }}
             aria-label={t("tarjeta.agregar")} title={t("tarjeta.agregar")}>
-            {added ? <Check size={16} /> : <ArrowUpRight size={compacto ? 15 : 18} />}
+            <IconoCarritoMas size={compacto ? 15 : 18} />
           </button>
         )}
       </div>
@@ -1230,13 +1298,16 @@ function EmptyState({ k }) {
 // ---------------------------------------------------------------------------
 // Vista administradora
 // ---------------------------------------------------------------------------
-function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, onVender, onOcultar, onDeshacer, onFoto, onExport }) {
+function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, onVender, onOcultar, onDeshacer, onFoto, onExport, negocio }) {
   const [tab, setTab] = useState("dashboard");
+  const pendientes = negocio.pedidos.filter((p) => p.estado === "pendiente").length;
   return (
     <main className="max-w-5xl mx-auto px-4 pb-16">
       <div className="flex flex-wrap gap-2 pt-6">
         <TabButton active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<LayoutDashboard size={14} />} k="admin.tabDashboard" />
         <TabButton active={tab === "productos"} onClick={() => setTab("productos")} icon={<Package size={14} />} k="admin.tabProductos" />
+        <TabButton active={tab === "ordenes"} onClick={() => setTab("ordenes")} icon={<ShoppingBag size={14} />} k="admin.tabOrdenes" contador={pendientes} />
+        <TabButton active={tab === "finanzas"} onClick={() => setTab("finanzas")} icon={<Receipt size={14} />} k="admin.tabFinanzas" />
         {onEditarSitio && (
           <button onClick={onEditarSitio} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition" style={{ background: "var(--colorAcento)", color: "#fff" }}>
             <Pencil size={14} /> <T k="admin.editar" enBoton />
@@ -1244,10 +1315,20 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
         )}
       </div>
 
-      {tab === "dashboard"
-        ? <Dashboard products={products} onExport={onExport} />
-        : <ProductosTab products={products} loading={loading} onNew={onNew} onEdit={onEdit} onDelete={onDelete}
-            onVender={onVender} onOcultar={onOcultar} onDeshacer={onDeshacer} onFoto={onFoto} />}
+      {tab === "dashboard" && <Dashboard products={products} onExport={onExport} onColonias={negocio.onColonias} />}
+      {tab === "productos" && (
+        <ProductosTab products={products} loading={loading} onNew={onNew} onEdit={onEdit} onDelete={onDelete}
+          onVender={onVender} onOcultar={onOcultar} onDeshacer={onDeshacer} onFoto={onFoto}
+          ocsPendientes={negocio.ordenesCompra.filter((o) => o.estado !== "recibida").sort((a, b) => b.createdAt - a.createdAt)}
+          onNuevaOC={negocio.onNuevaOC} onAbrirOC={negocio.onAbrirOC} />
+      )}
+      {tab === "ordenes" && (
+        <OrdenesVentaTab pedidos={negocio.pedidos} onConfirmar={negocio.onConfirmarPedido} onCancelar={negocio.onCancelarPedido} onWhatsApp={negocio.onWhatsApp} />
+      )}
+      {tab === "finanzas" && (
+        <FinanzasTab products={products} gastos={negocio.gastos} pedidos={negocio.pedidos} ocs={negocio.ordenesCompra}
+          embalaje={negocio.embalaje} onAbrirOC={negocio.onAbrirOC} onNuevaOC={negocio.onNuevaOC} avisar={negocio.avisar} />
+      )}
     </main>
   );
 }
@@ -1255,7 +1336,7 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
-function Dashboard({ products, onExport }) {
+function Dashboard({ products, onExport, onColonias }) {
   const { t } = useEdicion();
   const hoy = new Date();
   const hace30 = new Date(hoy.getTime() - 29 * DAY_MS);
@@ -1339,6 +1420,11 @@ function Dashboard({ products, onExport }) {
 
   return (
     <div className="pt-6 space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <button onClick={onColonias} className="flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-full border" style={{ borderColor: "#E3E0EC", background: "#fff", color: "#4A4760" }}>
+          <MapPin size={13} style={{ color: "var(--colorAcento)" }} /> Catálogo de colonias
+        </button>
+      </div>
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard icon={<Package size={18} />} label={<T k="dash.kpiArticulos" />} value={d.totalPiezas} sub={<T k="dash.kpiArticulosSub" />} />
@@ -1541,7 +1627,7 @@ const FILTROS_VACIOS = {
   compraDesde: "", compraHasta: "", orden: "reciente",
 };
 
-function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, onOcultar, onDeshacer, onFoto }) {
+function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, onOcultar, onDeshacer, onFoto, ocsPendientes, onNuevaOC, onAbrirOC }) {
   const { t } = useEdicion();
   const [q, setQ] = useState("");
   const [abierto, setAbierto] = useState(false);
@@ -1596,9 +1682,20 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 
   return (
     <div className="pt-6">
-      <button onClick={onNew} className="w-full rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium mb-3" style={{ background: "var(--colorAcento)", color: "#fff" }}>
-        <Plus size={16} /> <T k="prod.agregar" enBoton />
-      </button>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <button onClick={onNew} className="rounded-xl py-3 px-2 flex items-center justify-center gap-2 text-sm font-medium" style={{ background: "var(--colorAcento)", color: "#fff" }}>
+          <Plus size={16} /> <T k="prod.agregar" enBoton />
+        </button>
+        <button onClick={onNuevaOC} className="rounded-xl py-3 px-2 flex items-center justify-center gap-2 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
+          <ClipboardList size={16} /> Ingresar orden de compra
+        </button>
+      </div>
+      {ocsPendientes.length > 0 && (
+        <div className="mb-4">
+          <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Órdenes de compra por recibir</p>
+          <ListaOC ocs={ocsPendientes} onAbrir={onAbrirOC} />
+        </div>
+      )}
 
       {/* Búsqueda inteligente + filtros */}
       <div className="relative mb-2">
@@ -1773,11 +1870,12 @@ function SelectFiltro({ k, value, onChange, options }) {
   );
 }
 
-function TabButton({ active, onClick, icon, k }) {
+function TabButton({ active, onClick, icon, k, contador }) {
   return (
     <button onClick={onClick} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm transition"
       style={active ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#4A4760", border: "1px solid #E3E0EC" }}>
       {icon} <T k={k} enBoton />
+      {contador > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold flex items-center justify-center" style={{ background: "#2F8542", color: "#fff" }}>{contador}</span>}
     </button>
   );
 }

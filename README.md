@@ -25,6 +25,29 @@ pie de página, botones y acento). Los colores se guardan en `settings/store`
 | `settings/img_logo`, `settings/img_portada` | Logo y portada |
 | `settings/foto_original_{id}` | Foto original sin recortar (solo se carga al editar) |
 
+### Negocio (pedidos, compras y finanzas)
+
+Todo vive en la colección `settings` (ya permitida por las reglas):
+
+| Documento | Contenido |
+|---|---|
+| `settings/pedido_{id}` | Pedido del cliente (`tipo: "pedido"`, folio PV, estado pendiente/confirmado/cancelado) |
+| `settings/oc_{id}` | Orden de compra (`tipo: "oc"`, folio OC, estado pendiente/recibida) |
+| `settings/gasto_{id}` | Gasto (`tipo: "gasto"`, concepto envio/traslado/embalaje/otro) |
+| `settings/colonias` | `lista` de colonias con costo de envío y marca de «sin cobertura» |
+| `settings/embalaje` | `lista` de materiales de embalaje (existencias, costo, uso por pedido) |
+| `settings/contadores` | Últimos folios de pedidos y órdenes de compra |
+
+- **Tienda:** el botón de cada producto pregunta las piezas, sugiere el producto de
+  `compra.sugeridoNombre` (editable en Textos) y el carrito aparece en verde en el
+  encabezado. «Enviar ahora» pide nombre y teléfono, muestra el resumen con el logo
+  (`public/marca/logo-membrete.png`) y el método de pago (transferencia con la tarjeta
+  `public/marca/tarjeta-transferencia.jpg`, efectivo o tarjeta con 5% de cargo).
+- **Confirmar un pedido** descuenta piezas (como ventas), descuenta el embalaje y lo
+  registra como gasto, y abre WhatsApp con el cliente.
+- **Recibir una orden de compra** suma piezas a los artículos existentes (costo
+  promedio) o crea los nuevos, y registra el envío como gasto.
+
 Los catálogos preparados viven en `public/importar/` (listados en `index.json`) y se
 cargan desde Configuración → «Catálogos listos para cargar».
 
