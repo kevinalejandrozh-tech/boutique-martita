@@ -5,7 +5,7 @@ import {
   Package, DollarSign, Check, Info,
   Filter, Calendar, Clock, Truck, Tag, BarChart3, ShieldCheck, RotateCcw,
   Eye, EyeOff, Minus, Undo2, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
-  ClipboardList, MapPin, Receipt,
+  ClipboardList, MapPin, Receipt, ArrowUpRight, SlidersHorizontal,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -35,14 +35,16 @@ const SETTINGS_COL = collection(db, "settings");
 const SETTINGS_DOC = doc(db, "settings", "store");
 const CATEGORIAS_DOC = doc(db, "settings", "categorias");
 const TEXTOS_DOC = doc(db, "settings", "textos");
-const IMAGEN_DOC = { logo: doc(db, "settings", "img_logo"), portada: doc(db, "settings", "img_portada") };
+const IMAGEN_DOC = { logo: doc(db, "settings", "img_logo"), portada: doc(db, "settings", "img_portada"), fondo: doc(db, "settings", "img_fondo") };
+const FONDO_POR_DEFECTO = "/marca/fondo-acuarela.jpg";
+const OPACIDAD_FONDO = 0.08;
 // Foto original (sin recortar) de un producto, del logo o de la portada: se carga solo al editar.
 const originalDoc = (clave) => doc(db, "settings", `foto_original_${clave}`);
 const PAQUETES_URL = "/importar/index.json";
 
 const DEFAULT_SETTINGS = {
   nombre: "Boutique Martita", tagline: "Bazar de ropa bonita", whatsapp: "", pin: "1234",
-  fotoAspecto: "3:4", tarjetaTam: "normal", logoTam: 44,
+  fotoAspecto: "3:4", tarjetaTam: "normal", logoTam: 44, fondoOpacidad: OPACIDAD_FONDO,
 };
 const CAMPO_TIENDA = { "tienda.nombre": "nombre", "tienda.tagline": "tagline" };
 
@@ -187,7 +189,7 @@ export default function App() {
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...(cache.settings || {}) }));
   const [categorias, setCategorias] = useState(() => cache.categorias || []);
   const [textos, setTextos] = useState(() => cache.textos || {});
-  const [imagenes, setImagenes] = useState(() => ({ logo: cache.logo || null, portada: cache.portada || null }));
+  const [imagenes, setImagenes] = useState(() => ({ logo: cache.logo || null, portada: cache.portada || null, fondo: cache.fondo || null }));
 
   const [mode, setMode] = useState("cliente"); // cliente | admin
   const [editando, setEditando] = useState(false);
@@ -288,7 +290,7 @@ export default function App() {
   useEffect(() => {
     const { pin, ...visibles } = settings; // eslint-disable-line no-unused-vars
     const chica = (img) => (img && (img.src || "").length < 300000 ? img : null);
-    escribirCache({ settings: visibles, categorias, textos, logo: chica(imagenes.logo), portada: chica(imagenes.portada) });
+    escribirCache({ settings: visibles, categorias, textos, logo: chica(imagenes.logo), portada: chica(imagenes.portada), fondo: chica(imagenes.fondo) });
   }, [settings, categorias, textos, imagenes]);
 
   // -------------------------------------------------------------------
@@ -543,6 +545,20 @@ export default function App() {
     tamanoInicial: 0,
     onGuardar: guardarImagenSitio("portada"),
     onQuitar: imagenes.portada ? quitarImagenSitio("portada") : undefined,
+  });
+
+  const editarFondo = () => setEditorImagen({
+    titulo: "Imagen de fondo",
+    src: imagenes.fondo?.src || null,
+    cargarOriginal: cargarOriginalDe("fondo"),
+    recorteInicial: imagenes.fondo?.recorte || null,
+    aspecto: "original",
+    opcionesAspecto: ["original", "16:9", "4:3", "1:1", "3:4"],
+    tamanos: [{ etiqueta: "Normal", lado: 1400 }, { etiqueta: "Alta", lado: 1900 }],
+    tamanoInicial: 0,
+    ayuda: "Se verá detrás de todo el sitio con la transparencia que elijas en Configuración.",
+    onGuardar: guardarImagenSitio("fondo"),
+    onQuitar: imagenes.fondo ? quitarImagenSitio("fondo") : undefined,
   });
 
   // -------------------------------------------------------------------
@@ -929,6 +945,12 @@ export default function App() {
     <EdicionCtx.Provider value={ctx}>
       <div className="font-body min-h-screen" style={{ ...varsColores(settings), background: "var(--colorFondo)", color: "#17152B" }}>
         <BrandStyles />
+        <div aria-hidden="true" className="fixed inset-0 pointer-events-none" style={{
+          zIndex: 0,
+          backgroundImage: `url("${imagenes.fondo?.src || FONDO_POR_DEFECTO}")`,
+          backgroundSize: "cover", backgroundPosition: "center",
+          opacity: Math.min(1, Math.max(0, Number(settings.fondoOpacidad ?? OPACIDAD_FONDO))),
+        }} />
 
         <header className="sticky top-0 z-30" style={{ background: "var(--colorEncabezado)", color: "var(--colorEncabezadoTexto)" }}>
           <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
@@ -1008,7 +1030,7 @@ export default function App() {
           />
         )}
 
-        <footer style={{ background: "var(--colorPie)", color: "var(--colorPieTexto)" }}>
+        <footer className="relative z-[1]" style={{ background: "var(--colorPie)", color: "var(--colorPieTexto)" }}>
           <div className={`max-w-5xl mx-auto px-4 pt-10 pb-10 grid gap-4 sm:grid-cols-2 sm:items-end`}>
             <div>
               <p className="etiqueta-seccion">{settings.nombre}</p>
@@ -1077,6 +1099,13 @@ export default function App() {
               onSave={async (parcial) => { setSettings((s) => ({ ...s, ...parcial })); await saveSettings(parcial); setShowSettings(false); }}
               products={products} onExportBackup={exportBackup} onImportBackup={importBackup}
               onVaciar={vaciarCatalogo} onImportarPaquete={importarPaquete}
+              fondo={{
+                src: imagenes.fondo?.src || FONDO_POR_DEFECTO, personalizado: Boolean(imagenes.fondo),
+                opacidad: Number(settings.fondoOpacidad ?? OPACIDAD_FONDO),
+                onCambiar: editarFondo, onRestaurar: quitarImagenSitio("fondo"),
+                onVistaPrevia: (v) => setSettings((x) => ({ ...x, fondoOpacidad: v })),
+                onGuardarOpacidad: (v) => guardarAjuste("fondoOpacidad", v),
+              }}
             />
           </Modal>
         )}
@@ -1133,7 +1162,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
   const { t, editando } = useEdicion();
   const tam = settings.tarjetaTam || "normal";
   return (
-    <main className="max-w-5xl mx-auto px-4 pb-16">
+    <main className="relative z-[1] max-w-5xl mx-auto px-4 pb-16">
       {(portada || editando) && (
         <div className="pt-5">
           {portada ? (
@@ -1302,7 +1331,7 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
   const [tab, setTab] = useState("dashboard");
   const pendientes = negocio.pedidos.filter((p) => p.estado === "pendiente").length;
   return (
-    <main className="max-w-5xl mx-auto px-4 pb-16">
+    <main className="relative z-[1] max-w-5xl mx-auto px-4 pb-16">
       <div className="flex flex-wrap gap-2 pt-6">
         <TabButton active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<LayoutDashboard size={14} />} k="admin.tabDashboard" />
         <TabButton active={tab === "productos"} onClick={() => setTab("productos")} icon={<Package size={14} />} k="admin.tabProductos" />
@@ -1315,7 +1344,10 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
         )}
       </div>
 
-      {tab === "dashboard" && <Dashboard products={products} onExport={onExport} onColonias={negocio.onColonias} />}
+      {tab === "dashboard" && (
+        <Dashboard products={products} onExport={onExport} onColonias={negocio.onColonias}
+          pedidos={negocio.pedidos} gastos={negocio.gastos} onVerOrdenes={() => setTab("ordenes")} />
+      )}
       {tab === "productos" && (
         <ProductosTab products={products} loading={loading} onNew={onNew} onEdit={onEdit} onDelete={onDelete}
           onVender={onVender} onOcultar={onOcultar} onDeshacer={onDeshacer} onFoto={onFoto}
@@ -1336,7 +1368,7 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
-function Dashboard({ products, onExport, onColonias }) {
+function Dashboard({ products, onExport, onColonias, pedidos, gastos, onVerOrdenes }) {
   const { t } = useEdicion();
   const hoy = new Date();
   const hace30 = new Date(hoy.getTime() - 29 * DAY_MS);
@@ -1367,13 +1399,16 @@ function Dashboard({ products, onExport, onColonias }) {
         .sort((a, b) => b.venta - a.venta);
     };
 
+    const costoVendido = ventas.reduce((s, v) => s + v.costo * v.qty, 0);
+    const cobros = pedidos.filter((p) => p.estado === "confirmado").reduce((s, p) => s + (Number(p.envio) || 0) + (Number(p.cargoTarjeta) || 0), 0);
+    const totalGastos = gastos.reduce((s, g) => s + (Number(g.monto) || 0), 0);
     return {
       totalPiezas, inversion, valorVenta, totalVentas, piezasVendidas: piezas,
+      totalGastos, nGastos: gastos.length, utilidadNeta: totalVentas + cobros - costoVendido - totalGastos,
       porCategoria: agrupar("categoria", t("dash.sinCategoria")),
-      porGrupo: agrupar("grupo", t("dash.sinTemporada")),
       ventas,
     };
-  }, [products, t]);
+  }, [products, pedidos, gastos, t]);
 
   // ----- Reporte de ventas filtrado por fechas -----
   const reporte = useMemo(() => {
@@ -1426,12 +1461,16 @@ function Dashboard({ products, onExport, onColonias }) {
         </button>
       </div>
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <KpiCard icon={<Package size={18} />} label={<T k="dash.kpiArticulos" />} value={d.totalPiezas} sub={<T k="dash.kpiArticulosSub" />} />
         <KpiCard icon={<DollarSign size={18} />} label={<T k="dash.kpiInversion" />} value={money(d.inversion)} sub={<T k="dash.kpiInversionSub" />} />
         <KpiCard icon={<Tag size={18} />} label={<T k="dash.kpiValor" />} value={money(d.valorVenta)} sub={<T k="dash.kpiValorSub" />} />
-        <KpiCard icon={<ShoppingBag size={18} />} label={<T k="dash.kpiVentas" />} value={money(d.totalVentas)}
-          sub={<><T k="dash.kpiVentasSub" /> <strong style={{ color: "var(--colorAcento)" }}>{d.piezasVendidas}</strong></>} />
+        <KpiCard oscuro icon={<ShoppingBag size={18} />} label={<T k="dash.kpiVentas" />} value={money(d.totalVentas)}
+          sub={<><T k="dash.kpiVentasSub" /> <strong>{d.piezasVendidas}</strong></>} />
+        <KpiCard oscuro icon={<Receipt size={18} />} label={<T k="dash.kpiGastos" />} value={money(d.totalGastos)}
+          sub={<T k="dash.kpiGastosSub" vars={{ n: d.nGastos }} />} />
+        <KpiCard oscuro icon={<BarChart3 size={18} />} label={<T k="dash.kpiUtilidad" />} value={money(d.utilidadNeta)}
+          valorColor={d.utilidadNeta < 0 ? "#B23B3B" : undefined} sub={<T k="dash.kpiUtilidadSub" />} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -1474,35 +1513,8 @@ function Dashboard({ products, onExport, onColonias }) {
           </div>
         </Panel>
 
-        {/* Temporalidad */}
-        <Panel title={<T k="dash.temporalidad" />} icon={<Tag size={15} color="var(--colorAcento)" />}>
-          {d.porGrupo.length === 0 ? (
-            <div className="py-10 text-center">
-              <T k="dash.temporalidadVacia" as="p" className="text-sm block" style={{ color: "#A9A6BA" }} />
-            </div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{ color: "#8C89A0" }}>
-                  <th className="text-left font-medium pb-2 px-1"><T k="dash.colTemporada" /></th>
-                  <th className="text-right font-medium pb-2 px-1"><T k="dash.colPiezas" /></th>
-                  <th className="text-right font-medium pb-2 px-1"><T k="dash.colValorVenta" /></th>
-                  <th className="text-right font-medium pb-2 px-1"><T k="dash.colUtilidad" /></th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.porGrupo.map((g) => (
-                  <tr key={g.nombre} className="border-t" style={{ borderColor: "#EEECF3" }}>
-                    <td className="py-2.5 px-1 font-medium">{g.nombre}</td>
-                    <td className="py-2.5 px-1 text-right" style={{ color: "#4A4760" }}>{g.piezas}</td>
-                    <td className="py-2.5 px-1 text-right" style={{ color: "var(--colorAcento)" }}>{money(g.venta)}</td>
-                    <td className="py-2.5 px-1 text-right font-medium" style={{ color: g.utilidad >= 0 ? "#2F8542" : "#B23B3B" }}>{money(g.utilidad)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Panel>
+        {/* Resumen de órdenes de venta */}
+        <ResumenOrdenes pedidos={pedidos} onVerOrdenes={onVerOrdenes} />
       </div>
 
       {/* Reporte de ventas */}
@@ -1597,16 +1609,83 @@ function Panel({ title, icon, action, children }) {
   );
 }
 
-function KpiCard({ icon, label, value, sub }) {
+// `oscuro`: tarjetas de ventas, gastos y utilidad en lila más intenso.
+function KpiCard({ icon, label, value, sub, oscuro, valorColor }) {
+  const c = oscuro
+    ? { fondo: "#D9C9F0", borde: "#C4AEE6", icono: "#C3ABE8", iconoTxt: "#4B2E83", etiqueta: "#4B2E83", sub: "#5E4A86" }
+    : { fondo: "#F6F2FC", borde: "#E8E1F5", icono: "#ECE4F7", iconoTxt: "var(--colorAcento)", etiqueta: "#8C89A0", sub: "#A9A6BA" };
   return (
-    <div className="rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: "#E8E1F5", background: "#F6F2FC" }}>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#ECE4F7", color: "var(--colorAcento)" }}>{icon}</div>
+    <div className="rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: c.borde, background: c.fondo }}>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: c.icono, color: c.iconoTxt }}>{icon}</div>
       <div className="min-w-0">
-        <p className="text-[11px] leading-tight" style={{ color: "#8C89A0" }}>{label}</p>
-        <p className="font-display text-2xl leading-tight mt-0.5">{value}</p>
-        <p className="text-[10px] mt-0.5" style={{ color: "#A9A6BA" }}>{sub}</p>
+        <p className="text-[11px] leading-tight" style={{ color: c.etiqueta, fontWeight: oscuro ? 600 : 400 }}>{label}</p>
+        <p className="font-display text-2xl leading-tight mt-0.5" style={{ color: valorColor || "#17152B" }}>{value}</p>
+        <p className="text-[10px] mt-0.5" style={{ color: c.sub }}>{sub}</p>
       </div>
     </div>
+  );
+}
+
+const ESTADO_ORDEN = {
+  pendiente: ["Pendiente", "#FDF4E7", "#B0813C"],
+  confirmado: ["Confirmada", "#E4F3E6", "#2F8542"],
+  cancelado: ["Cancelada", "#EEECF3", "#7C7990"],
+};
+
+function ResumenOrdenes({ pedidos, onVerOrdenes }) {
+  const { t } = useEdicion();
+  const r = useMemo(() => {
+    const por = (e) => pedidos.filter((p) => p.estado === e);
+    const suma = (l) => l.reduce((s, p) => s + (Number(p.total) || 0), 0);
+    const pend = por("pendiente"), conf = por("confirmado"), canc = por("cancelado");
+    return {
+      pend: pend.length, conf: conf.length, canc: canc.length,
+      montoPend: suma(pend), montoConf: suma(conf),
+      recientes: [...pedidos].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5),
+    };
+  }, [pedidos]);
+
+  return (
+    <Panel title={<T k="dash.ordenes" />} action={
+      <button onClick={onVerOrdenes} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full" style={{ background: "#ECE8F6", color: "#4A4760" }}>
+        <T k="dash.ordenesVer" enBoton /> <ArrowUpRight size={12} />
+      </button>
+    }>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="rounded-xl p-2.5" style={{ background: r.pend ? "#E4F3E6" : "#F7F6FB" }}>
+          <p className="text-[10px]" style={{ color: "#8C89A0" }}><T k="dash.ordenesPendientes" /></p>
+          <p className="font-display text-2xl leading-tight" style={{ color: r.pend ? "#2F8542" : "#17152B" }}>{r.pend}</p>
+          <p className="text-[10px]" style={{ color: "#8C89A0" }}>{money(r.montoPend)}</p>
+        </div>
+        <div className="rounded-xl p-2.5" style={{ background: "#F7F6FB" }}>
+          <p className="text-[10px]" style={{ color: "#8C89A0" }}><T k="dash.ordenesConfirmadas" /></p>
+          <p className="font-display text-2xl leading-tight">{r.conf}</p>
+          <p className="text-[10px]" style={{ color: "#8C89A0" }}>{money(r.montoConf)}</p>
+        </div>
+        <div className="rounded-xl p-2.5" style={{ background: "#F7F6FB" }}>
+          <p className="text-[10px]" style={{ color: "#8C89A0" }}><T k="dash.ordenesCanceladas" /></p>
+          <p className="font-display text-2xl leading-tight">{r.canc}</p>
+        </div>
+      </div>
+      {r.recientes.length === 0 ? (
+        <T k="dash.ordenesVacio" as="p" className="text-sm py-6 text-center block" style={{ color: "#A9A6BA" }} />
+      ) : (
+        <div>
+          <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#8C89A0" }}>{t("dash.ordenesRecientes")}</p>
+          {r.recientes.map((p) => {
+            const [txt, bg, c] = ESTADO_ORDEN[p.estado] || [p.estado, "#EEECF3", "#7C7990"];
+            return (
+              <div key={p.id} className="flex items-center gap-2 py-2 border-t text-xs" style={{ borderColor: "#EEECF3" }}>
+                <span className="font-semibold flex-shrink-0">{formatoFolio("PV", p.folio)}</span>
+                <span className="min-w-0 flex-1 truncate" style={{ color: "#4A4760" }}>{p.nombre}<span style={{ color: "#A9A6BA" }}> · {fmtDate(p.createdAt)}</span></span>
+                <span className="font-medium flex-shrink-0">{money(p.total)}</span>
+                <span className="text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: bg, color: c }}>{txt}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Panel>
   );
 }
 
@@ -2103,7 +2182,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
 // ---------------------------------------------------------------------------
 // Configuración de la tienda
 // ---------------------------------------------------------------------------
-function SettingsForm({ settings, onSave, products, onExportBackup, onImportBackup, onVaciar, onImportarPaquete }) {
+function SettingsForm({ settings, onSave, products, onExportBackup, onImportBackup, onVaciar, onImportarPaquete, fondo }) {
   const { t } = useEdicion();
   const [local, setLocal] = useState({ nombre: settings.nombre, tagline: settings.tagline, whatsapp: settings.whatsapp, pin: settings.pin });
   const [shareUrl, setShareUrl] = useState(typeof window !== "undefined" ? window.location.href : "");
@@ -2136,6 +2215,8 @@ function SettingsForm({ settings, onSave, products, onExportBackup, onImportBack
         <button type="submit" className="w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("config.guardar")}</button>
       </form>
 
+      <FondoAjustes {...fondo} />
+
       <div className="pt-2 border-t" style={{ borderColor: "#E6E3EE" }}>
         <T k="config.compartirTitulo" as="h3" className="font-display text-lg mb-1 pt-4 block" />
         <T k="config.compartirTexto" as="p" className="text-xs mb-3 block" style={{ color: "#8C89A0" }} />
@@ -2167,6 +2248,46 @@ function SettingsForm({ settings, onSave, products, onExportBackup, onImportBack
       </div>
 
       <VaciarCatalogo total={products.length} pin={settings.pin} onVaciar={onVaciar} />
+    </div>
+  );
+}
+
+// Imagen de fondo del sitio y su transparencia.
+function FondoAjustes({ src, personalizado, opacidad, onCambiar, onRestaurar, onVistaPrevia, onGuardarOpacidad }) {
+  const [valor, setValor] = useState(Math.round(opacidad * 100));
+  const guardado = useRef(Math.round(opacidad * 100));
+  const fijar = (n) => { setValor(n); onVistaPrevia(n / 100); };
+  const guardar = () => { if (valor !== guardado.current) { guardado.current = valor; onGuardarOpacidad(valor / 100); } };
+  return (
+    <div className="pt-2 border-t" style={{ borderColor: "#E6E3EE" }}>
+      <h3 className="font-display text-lg mb-1 pt-4">Imagen de fondo</h3>
+      <p className="text-xs mb-3" style={{ color: "#8C89A0" }}>Se ve detrás de todo el sitio, casi transparente.</p>
+      <div className="flex items-start gap-3">
+        <div className="w-28 h-20 rounded-xl overflow-hidden flex-shrink-0 border relative" style={{ borderColor: "#E6E3EE", background: "var(--colorFondo)" }}>
+          <img src={src} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ opacity: Math.max(valor / 100, 0.04) }} />
+        </div>
+        <div className="flex flex-col gap-2 min-w-0">
+          <button type="button" onClick={onCambiar} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#ECE8F6", color: "#4A4760" }}>
+            <ImagePlus size={13} /> Cambiar imagen
+          </button>
+          {personalizado && (
+            <button type="button" onClick={onRestaurar} className="text-xs px-3 py-2 rounded-xl flex items-center gap-1.5" style={{ background: "#F6F5FA", color: "#4A4760" }}>
+              <RotateCcw size={13} /> Usar la imagen original
+            </button>
+          )}
+        </div>
+      </div>
+      <label className="block mt-4">
+        <span className="flex items-center justify-between text-xs" style={{ color: "#4A4760" }}>
+          <span className="flex items-center gap-1.5"><SlidersHorizontal size={13} /> Visibilidad del fondo</span>
+          <strong>{valor === 0 ? "Sin fondo" : `${valor}%`}</strong>
+        </span>
+        <input type="range" min="0" max="40" step="1" value={valor}
+          onChange={(e) => fijar(Number(e.target.value))}
+          onPointerUp={guardar} onKeyUp={guardar} onBlur={guardar} onTouchEnd={guardar}
+          className="w-full mt-2" style={{ accentColor: "var(--colorAcento)" }} />
+        <span className="flex justify-between text-[10px]" style={{ color: "#A9A6BA" }}><span>Invisible</span><span>Más visible</span></span>
+      </label>
     </div>
   );
 }
