@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { TEXTOS_BASE, ETIQUETAS, SECCIONES, rellenar, variablesDe, claveAFirestore, claveDeFirestore } from "./textos";
-import { Modal, Field, inputCls, inputStyle } from "./ui";
+import { Modal, Field, inputCls, inputStyle, varsColores } from "./ui";
 import ImageEditor, { TAMANOS_PRODUCTO, urlADataUrl } from "./ImageEditor";
 import {
   EdicionCtx, useEdicion, T, Editable, EditBadge, BotonFoto, EditorCampo, BarraEdicion,
@@ -173,8 +173,8 @@ function ButterflyIcon({ size = 24 }) {
       <path d="M24 15 C25.5 10.5, 28.5 8, 31.5 8.5" stroke="#2B2320" strokeWidth="1.3" strokeLinecap="round" fill="none" />
       <path d="M23 16 C14 9, 4 13, 6 23 C7 29, 15 29, 23 23 Z" stroke="#2B2320" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
       <path d="M23 25 C15 23, 8 27, 10 34 C11 39, 18 38, 23 32 Z" stroke="#2B2320" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
-      <path d="M25 16 C34 9, 44 13, 42 23 C41 29, 33 29, 25 23 Z" fill="#B25C6B" opacity="0.9" />
-      <path d="M25 25 C33 23, 40 27, 38 34 C37 39, 30 38, 25 32 Z" fill="#B25C6B" opacity="0.7" />
+      <path d="M25 16 C34 9, 44 13, 42 23 C41 29, 33 29, 25 23 Z" style={{ fill: "var(--colorAcento)" }} opacity="0.9" />
+      <path d="M25 25 C33 23, 40 27, 38 34 C37 39, 30 38, 25 32 Z" style={{ fill: "var(--colorAcento)" }} opacity="0.7" />
       <ellipse cx="24" cy="24" rx="1.5" ry="10" fill="#2B2320" />
     </svg>
   );
@@ -841,12 +841,17 @@ export default function App() {
   // -------------------------------------------------------------------
   const vistaCliente = mode === "cliente";
 
+  useEffect(() => {
+    const v = varsColores(settings);
+    Object.entries(v).forEach(([k, val]) => document.documentElement.style.setProperty(k, val));
+  }, [settings]);
+
   return (
     <EdicionCtx.Provider value={ctx}>
-      <div className="font-body min-h-screen" style={{ background: "#F7F3EC", color: "#2B2320" }}>
+      <div className="font-body min-h-screen flex flex-col" style={{ ...varsColores(settings), background: "var(--colorFondo)", color: "#2B2320" }}>
         <BrandStyles />
 
-        <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ background: "#F7F3ECEE", borderColor: "#E4DDD1" }}>
+        <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ background: "var(--colorEncabezado)", color: "var(--colorEncabezadoTexto)", borderColor: "#E4DDD1" }}>
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <Editable as="div" className="rounded-full flex-shrink-0" onEditar={editarLogo} titulo="Cambiar o recortar el logo">
@@ -866,7 +871,7 @@ export default function App() {
               <button
                 onClick={() => (isAdmin ? salirAdmin() : setPinModal(true))}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition"
-                style={isAdmin ? { background: "#2B2320", color: "#F7F3EC" } : { background: "#EFE2DE", color: "#6B5B52" }}
+                style={isAdmin ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#EFE2DE", color: "#6B5B52" }}
                 aria-label={t(isAdmin ? "tienda.modoTienda" : "tienda.administradora")}
               >
                 {isAdmin ? <Unlock size={13} /> : <Lock size={13} />}
@@ -916,10 +921,16 @@ export default function App() {
           />
         )}
 
+        <footer className="mt-10 border-t" style={{ background: "var(--colorPie)", color: "var(--colorPieTexto)", borderColor: "#E4DDD1", marginTop: "auto" }}>
+          <div className="max-w-5xl mx-auto px-4 py-6 text-center text-sm">
+            <T k="pie.texto" as="p" className="block" />
+          </div>
+        </footer>
+
         {vistaCliente && !editando && cartCount > 0 && (
           <button onClick={() => setCartOpen(true)}
             className="fixed bottom-4 left-4 right-4 max-w-5xl mx-auto rounded-2xl shadow-xl px-5 py-4 flex items-center justify-between z-40"
-            style={{ background: "#2B2320", color: "#F7F3EC" }}>
+            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
             <span className="flex items-center gap-2 text-sm font-medium"><ShoppingBag size={18} />{articulosTxt(cartCount)}</span>
             <span className="font-display text-lg">{money(cartTotal)}</span>
           </button>
@@ -975,8 +986,8 @@ export default function App() {
               onKeyDown={(e) => e.key === "Enter" && tryEnterAdmin()}
               className="w-full rounded-xl border px-4 py-3 text-center text-lg tracking-[0.4em]" style={{ borderColor: "#E4DDD1" }} placeholder="••••" />
             {pinError && <p className="text-xs mt-2 text-center" style={{ color: "#B23B3B" }}>{pinError}</p>}
-            <button onClick={() => tryEnterAdmin(false)} className="w-full mt-4 rounded-xl py-3 text-sm font-medium" style={{ background: "#2B2320", color: "#F7F3EC" }}>{t("acceso.entrar")}</button>
-            <button onClick={() => tryEnterAdmin(true)} className="w-full mt-2 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: "#EFE2DE", color: "#B25C6B" }}>
+            <button onClick={() => tryEnterAdmin(false)} className="w-full mt-4 rounded-xl py-3 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("acceso.entrar")}</button>
+            <button onClick={() => tryEnterAdmin(true)} className="w-full mt-2 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: "#EFE2DE", color: "var(--colorAcento)" }}>
               <Pencil size={13} /> {t("acceso.entrarEditar")}
             </button>
             <T k="acceso.ayuda" as="p" className="text-[11px] mt-3 text-center block" style={{ color: "#B7ACA0" }} />
@@ -1055,7 +1066,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
               <BotonFoto onClick={acciones.portada} texto="Portada" className="absolute bottom-3 left-3" />
             </div>
           ) : (
-            <button type="button" onClick={acciones.portada} className="w-full rounded-2xl border-2 border-dashed py-6 flex items-center justify-center gap-2 text-sm" style={{ borderColor: "#E3A9B4", color: "#B25C6B" }}>
+            <button type="button" onClick={acciones.portada} className="w-full rounded-2xl border-2 border-dashed py-6 flex items-center justify-center gap-2 text-sm" style={{ borderColor: "#E3A9B4", color: "var(--colorAcento)" }}>
               <ImagePlus size={16} /> Agregar imagen de portada (opcional)
             </button>
           )}
@@ -1074,17 +1085,17 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
 
       <div className="flex gap-2 overflow-x-auto scrollbar-none py-3 -mx-4 px-4">
         <button onClick={() => setActiveCat("Todas")} className="flex-shrink-0 px-4 py-2 rounded-full text-sm border transition"
-          style={activeCat === "Todas" ? { background: "#2B2320", color: "#F7F3EC", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
+          style={activeCat === "Todas" ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
           <T k="catalogo.todas" />
         </button>
         {categorias.map((c) => (
           <button key={c} onClick={() => setActiveCat(c)} className="flex-shrink-0 px-4 py-2 rounded-full text-sm border transition"
-            style={activeCat === c ? { background: "#2B2320", color: "#F7F3EC", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
+            style={activeCat === c ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
             <Editable onEditar={() => acciones.categoria(c)} titulo="Renombrar o eliminar categoría">{c}</Editable>
           </button>
         ))}
         {editando && (
-          <button type="button" onClick={acciones.nuevaCategoria} className="flex-shrink-0 px-4 py-2 rounded-full text-sm border border-dashed flex items-center gap-1" style={{ borderColor: "#B25C6B", color: "#B25C6B", background: "#fff" }}>
+          <button type="button" onClick={acciones.nuevaCategoria} className="flex-shrink-0 px-4 py-2 rounded-full text-sm border border-dashed flex items-center gap-1" style={{ borderColor: "var(--colorAcento)", color: "var(--colorAcento)", background: "#fff" }}>
             <Plus size={14} /> Categoría
           </button>
         )}
@@ -1106,7 +1117,7 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
           ) : (
             <div className={`${GRID_TARJETAS[tam] || GRID_TARJETAS.normal} pt-4`}>
               {editando && (
-                <button type="button" onClick={acciones.nuevo} className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 text-sm p-4" style={{ borderColor: "#E3A9B4", color: "#B25C6B", minHeight: 160 }}>
+                <button type="button" onClick={acciones.nuevo} className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 text-sm p-4" style={{ borderColor: "#E3A9B4", color: "var(--colorAcento)", minHeight: 160 }}>
                   <Plus size={20} /> Agregar producto
                 </button>
               )}
@@ -1157,7 +1168,7 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
                 style={{ background: "rgba(43,35,32,0.55)" }}
               >
                 <div className="rounded-xl px-3 py-2.5 shadow-lg text-center w-full" style={{ background: "#F7F3EC" }}>
-                  <T k="tarjeta.ubicacion" as="p" className="text-[9px] tracking-widest uppercase block" style={{ color: "#B25C6B" }} />
+                  <T k="tarjeta.ubicacion" as="p" className="text-[9px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
                   <p className="text-xs font-medium mt-0.5" style={{ color: "#2B2320" }}>{p.ubicacion}</p>
                 </div>
               </div>
@@ -1166,7 +1177,7 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
         )}
       </div>
       <div className={`${compacto ? "p-2" : "p-3"} flex flex-col flex-1`}>
-        <Editable as="p" className="text-[10px] tracking-widest uppercase" style={{ color: "#B25C6B" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
+        <Editable as="p" className="text-[10px] tracking-widest uppercase" style={{ color: "var(--colorAcento)" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
           {p.categoria || (editando ? t("dash.sinCategoria") : "")}
         </Editable>
         <Editable as="p" className={`${compacto ? "text-xs" : "text-sm"} font-medium leading-snug mt-0.5 line-clamp-2`} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
@@ -1175,13 +1186,13 @@ function ProductCard({ p, onAdd, aspecto, compacto, acciones }) {
         <div className="flex items-center justify-between mt-auto pt-2 gap-1">
           <Editable as="span" className={`font-display ${compacto ? "text-lg" : "text-2xl"} leading-none`} style={{ color: "#2B2320" }} onEditar={acciones.precio} titulo="Editar precio">{money(p.precioVenta)}</Editable>
           {editando ? (
-            <button onClick={acciones.form} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#B25C6B", color: "#fff" }} aria-label="Editar producto" title="Editar todos los datos">
+            <button onClick={acciones.form} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--colorAcento)", color: "#fff" }} aria-label="Editar producto" title="Editar todos los datos">
               <Pencil size={14} />
             </button>
           ) : (
             <button onClick={() => { if (onAdd()) { setAdded(true); setTimeout(() => setAdded(false), 1200); } }}
               className="w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0"
-              style={added ? { background: "#4CAF50", color: "#fff" } : { background: "#2B2320", color: "#F7F3EC" }} aria-label={t("tarjeta.agregar")}>
+              style={added ? { background: "#4CAF50", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }} aria-label={t("tarjeta.agregar")}>
               {added ? <Check size={15} /> : <Plus size={15} />}
             </button>
           )}
@@ -1206,7 +1217,7 @@ function AdminView({ products, loading, onEditarSitio, onNew, onEdit, onDelete, 
         <TabButton active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<LayoutDashboard size={14} />} k="admin.tabDashboard" />
         <TabButton active={tab === "productos"} onClick={() => setTab("productos")} icon={<Package size={14} />} k="admin.tabProductos" />
         {onEditarSitio && (
-          <button onClick={onEditarSitio} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition" style={{ background: "#B25C6B", color: "#fff" }}>
+          <button onClick={onEditarSitio} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition" style={{ background: "var(--colorAcento)", color: "#fff" }}>
             <Pencil size={14} /> <T k="admin.editar" enBoton />
           </button>
         )}
@@ -1313,7 +1324,7 @@ function Dashboard({ products, onExport }) {
         <KpiCard icon={<DollarSign size={18} />} label={<T k="dash.kpiInversion" />} value={money(d.inversion)} sub={<T k="dash.kpiInversionSub" />} />
         <KpiCard icon={<Tag size={18} />} label={<T k="dash.kpiValor" />} value={money(d.valorVenta)} sub={<T k="dash.kpiValorSub" />} />
         <KpiCard icon={<ShoppingBag size={18} />} label={<T k="dash.kpiVentas" />} value={money(d.totalVentas)}
-          sub={<><T k="dash.kpiVentasSub" /> <strong style={{ color: "#B25C6B" }}>{d.piezasVendidas}</strong></>} />
+          sub={<><T k="dash.kpiVentasSub" /> <strong style={{ color: "var(--colorAcento)" }}>{d.piezasVendidas}</strong></>} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -1352,12 +1363,12 @@ function Dashboard({ products, onExport }) {
             </div>
           )}
           <div className="flex items-center gap-2 pt-3 mt-1 border-t text-xs" style={{ borderColor: "#F1EBE0", color: "#9A8F80" }}>
-            <Package size={13} /> <T k="dash.totalPiezas" /> <strong style={{ color: "#B25C6B" }}>{d.totalPiezas}</strong>
+            <Package size={13} /> <T k="dash.totalPiezas" /> <strong style={{ color: "var(--colorAcento)" }}>{d.totalPiezas}</strong>
           </div>
         </Panel>
 
         {/* Temporalidad */}
-        <Panel title={<T k="dash.temporalidad" />} icon={<Tag size={15} color="#B25C6B" />}>
+        <Panel title={<T k="dash.temporalidad" />} icon={<Tag size={15} color="var(--colorAcento)" />}>
           {d.porGrupo.length === 0 ? (
             <div className="py-10 text-center">
               <T k="dash.temporalidadVacia" as="p" className="text-sm block" style={{ color: "#B7ACA0" }} />
@@ -1377,7 +1388,7 @@ function Dashboard({ products, onExport }) {
                   <tr key={g.nombre} className="border-t" style={{ borderColor: "#F1EBE0" }}>
                     <td className="py-2.5 px-1 font-medium">{g.nombre}</td>
                     <td className="py-2.5 px-1 text-right" style={{ color: "#6B5B52" }}>{g.piezas}</td>
-                    <td className="py-2.5 px-1 text-right" style={{ color: "#B25C6B" }}>{money(g.venta)}</td>
+                    <td className="py-2.5 px-1 text-right" style={{ color: "var(--colorAcento)" }}>{money(g.venta)}</td>
                     <td className="py-2.5 px-1 text-right font-medium" style={{ color: g.utilidad >= 0 ? "#2F8542" : "#B23B3B" }}>{money(g.utilidad)}</td>
                   </tr>
                 ))}
@@ -1388,7 +1399,7 @@ function Dashboard({ products, onExport }) {
       </div>
 
       {/* Reporte de ventas */}
-      <Panel title={<T k="dash.reporte" />} icon={<BarChart3 size={15} color="#B25C6B" />}>
+      <Panel title={<T k="dash.reporte" />} icon={<BarChart3 size={15} color="var(--colorAcento)" />}>
         <div className="flex flex-wrap items-end gap-2 mb-4">
           <div>
             <T k="dash.desde" as="label" className="text-[10px] uppercase tracking-wide" style={{ color: "#9A8F80" }} />
@@ -1427,7 +1438,7 @@ function Dashboard({ products, onExport }) {
                     <p className="font-medium truncate">{v.nombre}</p>
                     <p style={{ color: "#9A8F80" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })}</p>
                   </div>
-                  <span className="font-medium flex-shrink-0" style={{ color: "#B25C6B" }}>{money(v.precio * v.qty)}</span>
+                  <span className="font-medium flex-shrink-0" style={{ color: "var(--colorAcento)" }}>{money(v.precio * v.qty)}</span>
                 </div>
               ))}
             </div>
@@ -1482,7 +1493,7 @@ function Panel({ title, icon, action, children }) {
 function KpiCard({ icon, label, value, sub }) {
   return (
     <div className="rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: "#F0E4E4", background: "#FDF7F5" }}>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#F6E4E4", color: "#B25C6B" }}>{icon}</div>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#F6E4E4", color: "var(--colorAcento)" }}>{icon}</div>
       <div className="min-w-0">
         <p className="text-[11px] leading-tight" style={{ color: "#9A8F80" }}>{label}</p>
         <p className="font-display text-2xl leading-tight mt-0.5">{value}</p>
@@ -1564,7 +1575,7 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 
   return (
     <div className="pt-6">
-      <button onClick={onNew} className="w-full rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium mb-3" style={{ background: "#B25C6B", color: "#fff" }}>
+      <button onClick={onNew} className="w-full rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium mb-3" style={{ background: "var(--colorAcento)", color: "#fff" }}>
         <Plus size={16} /> <T k="prod.agregar" enBoton />
       </button>
 
@@ -1581,7 +1592,7 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
       <div className="flex items-center justify-between gap-2 mb-3">
         <button onClick={() => setAbierto((v) => !v)}
           className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full"
-          style={abierto || activos ? { background: "#2B2320", color: "#F7F3EC" } : { background: "#fff", color: "#6B5B52", border: "1px solid #E4DDD1" }}>
+          style={abierto || activos ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#6B5B52", border: "1px solid #E4DDD1" }}>
           <Filter size={13} /> <T k="prod.filtros" enBoton />{activos > 0 ? ` (${activos})` : ""}
         </button>
         <T k="prod.conteo" vars={{ n: lista.length, total: products.length }} as="span" className="text-xs" style={{ color: "#9A8F80" }} />
@@ -1595,7 +1606,7 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
               {[["todos", "prod.estadoTodos"], ["disponible", "prod.estadoDisponible"], ["agotado", "prod.estadoAgotado"], ["oculto", "prod.estadoOculto"]].map(([v, k]) => (
                 <button key={v} onClick={() => setF((prev) => ({ ...prev, estado: v }))}
                   className="text-[11px] px-2 py-1.5 rounded-full flex-1"
-                  style={f.estado === v ? { background: "#2B2320", color: "#F7F3EC" } : { background: "#F7F3EC", color: "#6B5B52" }}><T k={k} enBoton /></button>
+                  style={f.estado === v ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#F7F3EC", color: "#6B5B52" }}><T k={k} enBoton /></button>
               ))}
             </div>
           </div>
@@ -1690,16 +1701,16 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
         {p.fechaCompra && <span className="flex items-center gap-1"><Calendar size={11} /> {fmtDate(dateStrToTs(p.fechaCompra))}</span>}
         {p.proveedor && <span className="flex items-center gap-1"><Truck size={11} /> {p.proveedor}</span>}
         {vendidas > 0 && <span className="flex items-center gap-1"><ShoppingBag size={11} /> {t("prod.vendidas", { n: vendidas })}</span>}
-        {p.oculto && <span className="flex items-center gap-1" style={{ color: "#B25C6B" }}><EyeOff size={11} /> <T k="prod.estadoOculto" /></span>}
+        {p.oculto && <span className="flex items-center gap-1" style={{ color: "var(--colorAcento)" }}><EyeOff size={11} /> <T k="prod.estadoOculto" /></span>}
         {ult && (
-          <span className="flex items-center gap-1" style={{ color: "#B25C6B" }}>
+          <span className="flex items-center gap-1" style={{ color: "var(--colorAcento)" }}>
             <Check size={11} /> {t("prod.ultimaVenta", { fecha: fmtDateTime(ult.at) })}
           </span>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-        <button onClick={() => onVender(p)} disabled={agotado} className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full disabled:opacity-40" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+        <button onClick={() => onVender(p)} disabled={agotado} className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full disabled:opacity-40" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
           <Minus size={12} /> <T k="prod.vender" enBoton />
         </button>
         <button onClick={() => onOcultar(p)} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F7F3EC", color: "#6B5B52" }}>
@@ -1744,7 +1755,7 @@ function SelectFiltro({ k, value, onChange, options }) {
 function TabButton({ active, onClick, icon, k }) {
   return (
     <button onClick={onClick} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm transition"
-      style={active ? { background: "#2B2320", color: "#F7F3EC" } : { background: "#fff", color: "#6B5B52", border: "1px solid #E4DDD1" }}>
+      style={active ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" } : { background: "#fff", color: "#6B5B52", border: "1px solid #E4DDD1" }}>
       {icon} <T k={k} enBoton />
     </button>
   );
@@ -1800,7 +1811,7 @@ function VentaModal({ p, onCerrar, onRegistrar }) {
       {error && <p className="text-xs mt-2" style={{ color: "#B23B3B" }}>{error}</p>}
       <div className="flex gap-3 mt-4">
         <button type="button" onClick={onCerrar} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>{t("general.cancelar")}</button>
-        <button type="button" onClick={registrar} disabled={guardando || max < 1} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+        <button type="button" onClick={registrar} disabled={guardando || max < 1} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
           {guardando ? t("form.guardando") : t("venta.registrar")}
         </button>
       </div>
@@ -1835,7 +1846,7 @@ function DeshacerModal({ p, venta, pin, onCerrar, onConfirmar }) {
       {error && <p className="text-xs mt-2 text-center" style={{ color: "#B23B3B" }}>{error}</p>}
       <div className="flex gap-3 mt-4">
         <button onClick={onCerrar} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>{t("general.cancelar")}</button>
-        <button onClick={confirmar} disabled={guardando} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "#2B2320", color: "#F7F3EC" }}>{t("general.confirmar")}</button>
+        <button onClick={confirmar} disabled={guardando} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("general.confirmar")}</button>
       </div>
     </Modal>
   );
@@ -1894,7 +1905,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
             <input autoFocus value={nuevaCat} onChange={(e) => setNuevaCat(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); crearCategoria(); } }}
               placeholder={t("form.nuevaCategoriaPh")} className={inputCls + " mt-0"} style={inputStyle} />
-            <button type="button" onClick={crearCategoria} className="px-4 rounded-xl text-sm font-medium flex-shrink-0" style={{ background: "#2B2320", color: "#F7F3EC" }}>{t("form.agregarCategoria")}</button>
+            <button type="button" onClick={crearCategoria} className="px-4 rounded-xl text-sm font-medium flex-shrink-0" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("form.agregarCategoria")}</button>
             <button type="button" onClick={() => { setNuevaCat(null); setErrorCat(""); }} className="px-3 rounded-xl text-sm flex-shrink-0 border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>×</button>
           </div>
           {errorCat && <p className="text-xs mt-1" style={{ color: "#B23B3B" }}>{errorCat}</p>}
@@ -1934,7 +1945,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
       <div className="grid grid-cols-2 gap-3 items-end">
         <Field label={<T k="form.ubicacion" />}><input value={form.ubicacion} onChange={set("ubicacion")} className={inputCls} style={inputStyle} placeholder={t("form.ubicacionPh")} /></Field>
         <label className="flex items-center gap-2 text-sm rounded-xl border px-3 py-2.5 cursor-pointer" style={{ borderColor: "#E4DDD1", background: "#fff", color: "#6B5B52" }}>
-          <input type="checkbox" checked={Boolean(form.oculto)} onChange={(e) => setForm((f) => ({ ...f, oculto: e.target.checked }))} style={{ accentColor: "#B25C6B" }} />
+          <input type="checkbox" checked={Boolean(form.oculto)} onChange={(e) => setForm((f) => ({ ...f, oculto: e.target.checked }))} style={{ accentColor: "var(--colorAcento)" }} />
           <T k="form.ocultar" />
         </label>
       </div>
@@ -1964,7 +1975,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 rounded-xl py-3 text-sm font-medium border" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>{t("form.cancelar")}</button>
-        <button type="submit" disabled={saving} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "#2B2320", color: "#F7F3EC" }}>{saving ? t("form.guardando") : t("form.guardar")}</button>
+        <button type="submit" disabled={saving} className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-60" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{saving ? t("form.guardando") : t("form.guardar")}</button>
       </div>
     </form>
   );
@@ -2003,7 +2014,7 @@ function SettingsForm({ settings, onSave, products, onExportBackup, onImportBack
         <Field label={<T k="config.tagline" />}><input value={local.tagline} onChange={set("tagline")} className={inputCls} style={inputStyle} /></Field>
         <Field label={<T k="config.whatsapp" />}><input value={local.whatsapp} onChange={set("whatsapp")} className={inputCls} style={inputStyle} placeholder="5215512345678" /></Field>
         <Field label={<T k="config.pin" />}><input value={local.pin} onChange={set("pin")} className={inputCls} style={inputStyle} /></Field>
-        <button type="submit" className="w-full rounded-xl py-3 text-sm font-medium" style={{ background: "#2B2320", color: "#F7F3EC" }}>{t("config.guardar")}</button>
+        <button type="submit" className="w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>{t("config.guardar")}</button>
       </form>
 
       <div className="pt-2 border-t" style={{ borderColor: "#E9E1D4" }}>
@@ -2100,7 +2111,7 @@ function PaqueteImportable({ pq, fecha, totalProductos, pin, onImportar }) {
       </div>
       {totalProductos > 0 && (
         <label className="flex items-start gap-2 text-xs mt-3 cursor-pointer" style={{ color: "#6B5B52" }}>
-          <input type="checkbox" checked={reemplazar} onChange={(e) => setReemplazar(e.target.checked)} className="mt-0.5" style={{ accentColor: "#B25C6B" }} />
+          <input type="checkbox" checked={reemplazar} onChange={(e) => setReemplazar(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--colorAcento)" }} />
           <T k="config.importarReemplazar" />
         </label>
       )}
@@ -2109,7 +2120,7 @@ function PaqueteImportable({ pq, fecha, totalProductos, pin, onImportar }) {
           placeholder={t("config.pinConfirmar")} className={inputCls} style={inputStyle} />
       )}
       <button type="button" onClick={correr} disabled={estado === "corriendo"}
-        className="w-full mt-3 rounded-xl py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-70" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+        className="w-full mt-3 rounded-xl py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-70" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
         <FileUp size={14} />
         {estado === "corriendo"
           ? t("config.importando", { i: progreso?.i || 0, n: progreso?.n || pq.productos })

@@ -4,7 +4,7 @@ import {
   Type, Tags, LayoutGrid, Store, LayoutDashboard, ImagePlus, Image as ImageIcon,
 } from "lucide-react";
 import { SECCIONES, TEXTOS, TEXTOS_BASE, ETIQUETAS, variablesDe } from "./textos";
-import { Modal, inputCls, inputStyle } from "./ui";
+import { Modal, inputCls, inputStyle, COLORES, varsColores } from "./ui";
 
 // ---------------------------------------------------------------------------
 // Contexto del modo edición
@@ -117,7 +117,7 @@ export function EditorCampo({ cfg, onCerrar }) {
     ejecutar(() => cfg.onGuardar(tipo === "numero" ? Number(v) : v));
   };
 
-  const boton = { background: "#2B2320", color: "#F7F3EC" };
+  const boton = { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" };
 
   return (
     <Modal onClose={guardando ? () => {} : onCerrar} title={cfg.titulo} capa={60}>
@@ -128,7 +128,7 @@ export function EditorCampo({ cfg, onCerrar }) {
           {cfg.opciones.map((o) => (
             <button key={o.valor} type="button" disabled={guardando} onClick={() => guardar(o.valor)}
               className="px-4 py-2 rounded-full text-sm border"
-              style={o.valor === cfg.valor ? { background: "#2B2320", color: "#F7F3EC", borderColor: "#2B2320" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
+              style={o.valor === cfg.valor ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" } : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" }}>
               {o.etiqueta}
             </button>
           ))}
@@ -184,16 +184,16 @@ export function EditorCampo({ cfg, onCerrar }) {
 // ---------------------------------------------------------------------------
 export function BarraEdicion({ vista, onVista, onTextos, onCategorias, onDiseno, onListo }) {
   const chip = (activo) => (activo
-    ? { background: "#fff", color: "#B25C6B" }
+    ? { background: "#fff", color: "var(--colorAcento)" }
     : { background: "rgba(255,255,255,0.16)", color: "#fff" });
   return (
-    <div style={{ background: "#B25C6B", color: "#fff" }}>
+    <div style={{ background: "var(--colorAcento)", color: "#fff" }}>
       <div className="max-w-5xl mx-auto px-4 pt-2 flex items-center gap-2">
         <Pencil size={14} className="flex-shrink-0" />
         <p className="text-xs font-semibold flex-1 min-w-0 leading-tight">
           Modo edición <span className="font-normal opacity-90">· toca un texto o imagen para cambiarlo</span>
         </p>
-        <button type="button" onClick={onListo} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0" style={{ background: "#fff", color: "#B25C6B" }}>
+        <button type="button" onClick={onListo} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0" style={{ background: "#fff", color: "var(--colorAcento)" }}>
           <Check size={13} /> Listo
         </button>
       </div>
@@ -242,7 +242,7 @@ export function TextosPanel({ valorCrudo, esModificado, onGuardar, onRestaurar, 
               <button type="button" onClick={() => setAbiertas((a) => ({ ...a, [g.id]: !a[g.id] }))} className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left">
                 <span className="text-sm font-medium">{g.nombre}</span>
                 <span className="flex items-center gap-2 text-[11px]" style={{ color: "#9A8F80" }}>
-                  {g.modificados > 0 && <span className="px-2 py-0.5 rounded-full" style={{ background: "#F6E4E4", color: "#B25C6B" }}>{g.modificados} cambiado{g.modificados !== 1 ? "s" : ""}</span>}
+                  {g.modificados > 0 && <span className="px-2 py-0.5 rounded-full" style={{ background: "#F6E4E4", color: "var(--colorAcento)" }}>{g.modificados} cambiado{g.modificados !== 1 ? "s" : ""}</span>}
                   {g.items.length}
                   {abierta ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </span>
@@ -282,7 +282,7 @@ function FilaTexto({ k, etiqueta, original, actual, modificado, onGuardar, onRes
     <div className="rounded-xl border p-3" style={{ borderColor: modificado ? "#E9C9CF" : "#F1EBE0", background: "#FDFBF8" }}>
       <div className="flex items-center justify-between gap-2 mb-1">
         <p className="text-xs font-medium" style={{ color: "#6B5B52" }}>{etiqueta}</p>
-        {modificado && <span className="text-[10px] flex-shrink-0" style={{ color: "#B25C6B" }}>Modificado</span>}
+        {modificado && <span className="text-[10px] flex-shrink-0" style={{ color: "var(--colorAcento)" }}>Modificado</span>}
       </div>
       {largo
         ? <textarea rows={3} value={v} onChange={(e) => setV(e.target.value)} className={inputCls} style={inputStyle} />
@@ -300,7 +300,7 @@ function FilaTexto({ k, etiqueta, original, actual, modificado, onGuardar, onRes
           {sucio && (
             <>
               <button type="button" onClick={() => setV(actual)} className="text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F7F3EC", color: "#6B5B52" }}>Descartar</button>
-              <button type="button" onClick={guardar} disabled={estado === "guardando"} className="text-[11px] px-3 py-1.5 rounded-full font-medium" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+              <button type="button" onClick={guardar} disabled={estado === "guardando"} className="text-[11px] px-3 py-1.5 rounded-full font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
                 {estado === "guardando" ? "Guardando…" : "Guardar"}
               </button>
             </>
@@ -352,7 +352,7 @@ export function CategoriasPanel({ categorias, conteo, t, onAgregar, onRenombrar,
       <div className="flex gap-2 mb-4">
         <input value={nueva} onChange={(e) => setNueva(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") agregar(); }}
           placeholder={t("cat.nuevaPh")} className={inputCls + " mt-0"} style={inputStyle} />
-        <button type="button" onClick={agregar} disabled={ocupado || !nueva.trim()} className="px-4 rounded-xl text-sm font-medium flex items-center gap-1 flex-shrink-0 disabled:opacity-50" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+        <button type="button" onClick={agregar} disabled={ocupado || !nueva.trim()} className="px-4 rounded-xl text-sm font-medium flex items-center gap-1 flex-shrink-0 disabled:opacity-50" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
           <Plus size={14} /> {t("cat.agregar")}
         </button>
       </div>
@@ -410,14 +410,14 @@ export function TamanoLogo({ valor, onCambiar }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#9A8F80" }}>Tamaño del logo en pantalla · {v}px</p>
-      <input type="range" min={32} max={96} step={2} value={v} onChange={(e) => cambiar(Number(e.target.value))} className="w-full" style={{ accentColor: "#B25C6B" }} aria-label="Tamaño del logo" />
+      <input type="range" min={32} max={96} step={2} value={v} onChange={(e) => cambiar(Number(e.target.value))} className="w-full" style={{ accentColor: "var(--colorAcento)" }} aria-label="Tamaño del logo" />
     </div>
   );
 }
 
 export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEditarLogo, onQuitarLogo, onEditarPortada, onQuitarPortada, onCerrar }) {
   const chip = (activo) => (activo
-    ? { background: "#2B2320", color: "#F7F3EC", borderColor: "#2B2320" }
+    ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" }
     : { background: "#fff", color: "#6B5B52", borderColor: "#E4DDD1" });
   const seccion = "rounded-2xl border p-4 space-y-3";
   const caja = { borderColor: "#E9E1D4", background: "#fff" };
@@ -426,6 +426,23 @@ export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEd
   return (
     <Modal onClose={onCerrar} title="Diseño e imágenes" wide>
       <div className="space-y-3">
+        <div className={seccion} style={caja}>
+          <p className={titulo} style={{ color: "#6B5B52" }}>Colores</p>
+          <div className="grid grid-cols-2 gap-2">
+            {COLORES.map(([k, txt, def]) => {
+              const val = varsColores(settings)["--" + k];
+              return (
+                <label key={k} className="flex items-center gap-2 rounded-xl border p-2 text-[11px]" style={{ borderColor: "#E4DDD1", color: "#6B5B52" }}>
+                  <input type="color" value={val} onChange={(e) => onAjuste(k, e.target.value)} className="w-9 h-9 rounded-lg border-0 p-0 bg-transparent flex-shrink-0 cursor-pointer" aria-label={txt} />
+                  <span className="min-w-0 leading-tight">{txt}{val.toLowerCase() !== def.toLowerCase() && (
+                    <button type="button" onClick={(e) => { e.preventDefault(); onAjuste(k, def); }} className="block underline mt-0.5" style={{ color: "#9A8F80" }}>Restaurar</button>
+                  )}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         <div className={seccion} style={caja}>
           <p className={titulo} style={{ color: "#6B5B52" }}>Fotos de productos</p>
           <div>
@@ -474,7 +491,7 @@ export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEd
           </div>
         </div>
       </div>
-      <button type="button" onClick={onCerrar} className="w-full mt-4 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: "#2B2320", color: "#F7F3EC" }}>
+      <button type="button" onClick={onCerrar} className="w-full mt-4 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
         <Check size={14} /> Listo
       </button>
     </Modal>

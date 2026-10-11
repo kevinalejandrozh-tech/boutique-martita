@@ -8,6 +8,7 @@
 export const SECCIONES = [
   ["sitio", "Sitio y pestaña del navegador"],
   ["tienda", "Encabezado"],
+  ["pie", "Pie de página"],
   ["catalogo", "Catálogo"],
   ["tarjeta", "Tarjetas de producto"],
   ["pedido", "Pedido y WhatsApp"],
@@ -33,6 +34,9 @@ export const TEXTOS = [
   ["tienda.administradora", "Botón de acceso de administradora", "Administradora"],
   ["tienda.modoTienda", "Botón para salir del panel", "Modo tienda"],
   ["tienda.configuracion", "Nombre del botón de configuración", "Configuración"],
+
+  // Pie de página
+  ["pie.texto", "Texto del pie de página", "Gracias por visitarnos 💕"],
 
   // Catálogo
   ["catalogo.buscarTitulo", "Texto sobre el buscador", "¿Qué estás buscando?"],

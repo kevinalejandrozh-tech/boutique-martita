@@ -10,7 +10,9 @@ Entra como administradora y toca **Editar sitio** (o «Entrar y editar el sitio�
 escribir el PIN). En modo edición se puede tocar cualquier texto o imagen para
 cambiarlo; «Todos los textos» lista también los que no se ven (ejemplos de búsqueda,
 mensaje de WhatsApp, avisos). «Diseño e imágenes» cambia el formato de las fotos,
-el tamaño de las tarjetas, el logo y la portada.
+el tamaño de las tarjetas, el logo, la portada y los **colores** (fondo, encabezado,
+pie de página, botones y acento). Los colores se guardan en `settings/store`
+(`colorFondo`, `colorEncabezado`, `colorPie`, `colorBoton`, `colorAcento`, …).
 
 ## Datos en Firestore
 

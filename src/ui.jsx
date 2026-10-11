@@ -28,3 +28,21 @@ export function Modal({ children, onClose, title, wide, muyAncho, capa = 50 }) {
     </div>
   );
 }
+
+// Colores personalizables del sitio (se guardan en settings/store)
+export const COLORES = [
+  ["colorFondo", "Fondo de la página", "#F7F3EC"],
+  ["colorEncabezado", "Fondo del encabezado", "#F7F3EC"],
+  ["colorEncabezadoTexto", "Texto del encabezado", "#2B2320"],
+  ["colorPie", "Fondo del pie de página", "#EFE2DE"],
+  ["colorPieTexto", "Texto del pie de página", "#6B5B52"],
+  ["colorBoton", "Botones principales", "#2B2320"],
+  ["colorBotonTexto", "Texto de los botones", "#F7F3EC"],
+  ["colorAcento", "Color de acento", "#B25C6B"],
+];
+export function varsColores(settings = {}) {
+  const ok = (v) => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
+  const v = {};
+  COLORES.forEach(([k, , d]) => { v["--" + k] = ok(settings[k]) ? settings[k] : d; });
+  return v;
+}
