@@ -5,7 +5,7 @@ import {
   Package, DollarSign, Check, Info,
   Filter, Calendar, Clock, Truck, Tag, BarChart3, ShieldCheck, RotateCcw,
   Eye, EyeOff, Minus, Undo2, LayoutGrid, List, ArrowUpDown, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
-  ClipboardList, MapPin, Receipt, ArrowUpRight, SlidersHorizontal, ChevronLeft, ChevronRight,
+  ClipboardList, MapPin, Receipt, UserRound, ArrowUpRight, SlidersHorizontal, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -44,7 +44,7 @@ const PAQUETES_URL = "/importar/index.json";
 
 const DEFAULT_SETTINGS = {
   nombre: "AB&C MARKET", tagline: "Bazar de ropa bonita", whatsapp: "", pin: "1234",
-  fotoAspecto: "3:4", tarjetaTam: "normal", logoTam: 44, fondoOpacidad: OPACIDAD_FONDO,
+  fotoAspecto: "3:4", tarjetaTam: "normal", logoTam: 44, tituloTam: 24, subtituloTam: 12, fondoOpacidad: OPACIDAD_FONDO,
 };
 const CAMPO_TIENDA = { "tienda.nombre": "nombre", "tienda.tagline": "tagline" };
 
@@ -1010,8 +1010,8 @@ export default function App() {
                 <Logo src={imagenes.logo?.src} tam={Number(settings.logoTam) || 44} />
               </Editable>
               <div className="min-w-0">
-                <T k="tienda.nombre" as="h1" className="font-display text-2xl leading-tight block" />
-                <T k="tienda.tagline" as="p" className="text-xs block" style={{ opacity: 0.6 }} />
+                <T k="tienda.nombre" as="h1" className="font-display leading-tight block" style={{ fontSize: Number(settings.tituloTam) || 24 }} />
+                <T k="tienda.tagline" as="p" className="block" style={{ opacity: 0.6, fontSize: Number(settings.subtituloTam) || 12 }} />
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -1022,18 +1022,22 @@ export default function App() {
               )}
               <button
                 onClick={() => (isAdmin ? salirAdmin() : setPinModal(true))}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition border"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition border hover:opacity-80"
                 style={isAdmin ? { background: "var(--colorAcento)", color: "#fff", borderColor: "var(--colorAcento)" } : { background: "transparent", color: "inherit", borderColor: "currentColor" }}
                 aria-label={t(isAdmin ? "tienda.modoTienda" : "tienda.administradora")}
+                title={t(isAdmin ? "tienda.modoTienda" : "tienda.administradora")}
               >
-                {isAdmin ? <Unlock size={13} /> : <Lock size={13} />}
-                {/* En modo edición, en celular solo se muestra el ícono para dejar espacio al nombre */}
-                <span className={editando ? "hidden sm:inline" : undefined}>
-                  <T k={isAdmin ? "tienda.modoTienda" : "tienda.administradora"} enBoton />
-                </span>
+                {isAdmin ? <ShoppingBag size={17} /> : <UserRound size={17} />}
               </button>
             </div>
           </div>
+          {editando && (
+            <div className="max-w-5xl mx-auto px-4 pb-3 grid grid-cols-3 gap-3">
+              <TamanoLogo etiqueta="Logo" valor={Number(settings.logoTam) || 44} min={32} max={96} onCambiar={(n) => guardarAjuste("logoTam", n)} oscuro />
+              <TamanoLogo etiqueta="Título" valor={Number(settings.tituloTam) || 24} min={14} max={44} onCambiar={(n) => guardarAjuste("tituloTam", n)} oscuro />
+              <TamanoLogo etiqueta="Subtítulo" valor={Number(settings.subtituloTam) || 12} min={9} max={22} onCambiar={(n) => guardarAjuste("subtituloTam", n)} oscuro />
+            </div>
+          )}
           {vistaCliente && !editando && cartCount > 0 && (
             <BarraCarrito articulos={articulosTxt(cartCount)} total={cartTotal} onEnviar={() => setCheckoutOpen(true)} />
           )}
@@ -1941,13 +1945,13 @@ function KpiCard({ icon, label, value, sub, oscuro, valorColor, oculto, onAltern
     ? { fondo: "#D9C9F0", borde: "#C4AEE6", icono: "#C3ABE8", iconoTxt: "#4B2E83", etiqueta: "#4B2E83", sub: "#5E4A86" }
     : { fondo: "#F6F2FC", borde: "#E8E1F5", icono: "#ECE4F7", iconoTxt: "var(--colorAcento)", etiqueta: "#8C89A0", sub: "#A9A6BA" };
   return (
-    <div className="relative rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor: c.borde, background: c.fondo }}>
+    <div className="relative rounded-2xl border px-2 py-3 sm:p-4 flex flex-col items-center text-center gap-1.5 sm:flex-row sm:items-start sm:text-left sm:gap-3 min-w-0" style={{ borderColor: c.borde, background: c.fondo }}>
       <div className="absolute top-1.5 right-1.5"><BotonOcultar onAlternar={onAlternar} /></div>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: c.icono, color: c.iconoTxt }}>{icon}</div>
-      <div className="min-w-0 pr-4">
+      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: c.icono, color: c.iconoTxt }}>{icon}</div>
+      <div className="min-w-0 w-full sm:pr-4">
         <p className="text-[11px] leading-tight" style={{ color: c.etiqueta, fontWeight: oscuro ? 600 : 400 }}>{label}</p>
-        <p className="font-display text-2xl leading-tight mt-0.5" style={{ color: valorColor || "#17152B" }}>{value}</p>
-        <p className="text-[10px] mt-0.5" style={{ color: c.sub }}>{sub}</p>
+        <p className="font-display text-lg sm:text-2xl leading-tight mt-0.5 truncate" style={{ color: valorColor || "#17152B" }}>{value}</p>
+        <p className="text-[10px] mt-0.5 leading-tight" style={{ color: c.sub }}>{sub}</p>
       </div>
     </div>
   );

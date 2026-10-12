@@ -398,7 +398,7 @@ export function CategoriasPanel({ categorias, conteo, t, onAgregar, onRenombrar,
 export const FORMATOS_FOTO = ["3:4", "4:5", "1:1", "2:3", "4:3"];
 export const TAMANOS_TARJETA = [["chico", "Chico"], ["normal", "Normal"], ["grande", "Grande"]];
 
-export function TamanoLogo({ valor, onCambiar }) {
+export function TamanoLogo({ valor, onCambiar, etiqueta, min = 32, max = 96, oscuro }) {
   const [v, setV] = useState(valor);
   const timer = useRef(null);
   useEffect(() => { setV(valor); }, [valor]);
@@ -408,9 +408,11 @@ export function TamanoLogo({ valor, onCambiar }) {
     timer.current = setTimeout(() => onCambiar(n), 350);
   };
   return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wide mb-1.5" style={{ color: "#8C89A0" }}>Tamaño del logo en pantalla · {v}px</p>
-      <input type="range" min={32} max={96} step={2} value={v} onChange={(e) => cambiar(Number(e.target.value))} className="w-full" style={{ accentColor: "var(--colorAcento)" }} aria-label="Tamaño del logo" />
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide mb-1 truncate" style={{ color: oscuro ? "inherit" : "#8C89A0", opacity: oscuro ? 0.75 : 1 }}>
+        {etiqueta ? `${etiqueta} · ${v}px` : `Tamaño del logo en pantalla · ${v}px`}
+      </p>
+      <input type="range" min={min} max={max} step={1} value={v} onChange={(e) => cambiar(Number(e.target.value))} className="w-full" style={{ accentColor: "var(--colorAcento)" }} aria-label={`Tamaño ${etiqueta || "del logo"}`} />
     </div>
   );
 }
@@ -476,6 +478,8 @@ export function DisenoPanel({ settings, imagenes, logoPorDefecto, onAjuste, onEd
             </div>
           </div>
           <TamanoLogo valor={settings.logoTam} onCambiar={(n) => onAjuste("logoTam", n)} />
+          <TamanoLogo etiqueta="Título" valor={settings.tituloTam || 24} min={14} max={44} onCambiar={(n) => onAjuste("tituloTam", n)} />
+          <TamanoLogo etiqueta="Subtítulo" valor={settings.subtituloTam || 12} min={9} max={22} onCambiar={(n) => onAjuste("subtituloTam", n)} />
         </div>
 
         <div className={seccion} style={caja}>
