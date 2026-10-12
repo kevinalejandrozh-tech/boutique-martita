@@ -156,12 +156,17 @@ function descargar(blob, nombre) {
 // ---------------------------------------------------------------------------
 const BrandStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600&display=swap');
     .font-display { font-family: 'Inter Tight', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.025em; }
     .font-body { font-family: 'Inter', sans-serif; }
     .etiqueta-seccion { font-size: 11px; letter-spacing: 0.02em; opacity: 0.6; }
     .tarjeta-foto img { transition: transform .5s ease; }
     .tarjeta-foto:hover img { transform: scale(1.03); }
+    .precio-gigante { font-family: 'Montserrat', 'Inter Tight', sans-serif; font-weight: 800; letter-spacing: -0.04em; line-height: .85; }
+    .sombra-texto { text-shadow: 0 1px 10px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35); }
+    .tarjeta-carrusel { width: calc((100vw - 44px) / 2); }
+    @media (min-width: 640px) { .tarjeta-carrusel { width: 210px; } }
+    @media (min-width: 1024px) { .tarjeta-carrusel { width: 230px; } }
     .scrollbar-none::-webkit-scrollbar { display: none; }
     .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
   `}</style>
@@ -1358,19 +1363,18 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
   );
 }
 
-// Ancho de cada tarjeta dentro del carrusel según el tamaño elegido en Diseño.
-const ANCHO_TARJETA = { chico: 118, normal: 150, grande: 190 };
-const ROJO_PRECIO = "#D7192D";
-
-// Precio estilo tienda departamental: pesos grandes y centavos en superíndice.
+// Precio estilo tienda departamental: $ pequeño arriba, pesos gigantes y centavos en superíndice.
 function PrecioTienda({ valor, tam }) {
   const v = Math.round((Number(valor) || 0) * 100) / 100;
   const enteros = Math.floor(v).toLocaleString("es-MX");
-  const centavos = String(Math.round((v - Math.floor(v)) * 100)).padStart(2, "0");
-  const grande = { chico: "text-sm", normal: "text-base", grande: "text-lg" }[tam] || "text-base";
+  const cent = Math.round((v - Math.floor(v)) * 100);
+  const base = { chico: 30, normal: 40, grande: 48 }[tam] || 40;
+  const tamano = enteros.length > 5 ? base * 0.72 : enteros.length > 3 ? base * 0.85 : base;
   return (
-    <span className={`${grande} font-bold leading-none whitespace-nowrap`} style={{ color: ROJO_PRECIO }}>
-      ${enteros}<sup className="text-[0.55em] font-bold ml-px" style={{ top: "-0.6em" }}>{centavos}</sup>
+    <span className="precio-gigante inline-flex items-start text-white sombra-texto whitespace-nowrap" style={{ fontSize: tamano }}>
+      <span style={{ fontSize: "0.42em", marginTop: "0.12em", marginRight: "0.04em" }}>$</span>
+      <span>{enteros}</span>
+      {cent > 0 && <span style={{ fontSize: "0.4em", marginTop: "0.12em", marginLeft: "0.04em" }}>{String(cent).padStart(2, "0")}</span>}
     </span>
   );
 }
@@ -1390,22 +1394,21 @@ function CarruselProductos({ titulo, tam, children }) {
   }, [medir, children]);
   const mover = (dir) => {
     const el = ref.current; if (!el) return;
-    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.8, ANCHO_TARJETA[tam] || 150), behavior: "smooth" });
+    el.scrollBy({ left: dir * el.clientWidth * 0.9, behavior: "smooth" });
   };
   const flecha = (dir, oculto) => (
     <button type="button" onClick={() => mover(dir)} disabled={oculto} aria-label={dir < 0 ? "Ver anteriores" : "Ver siguientes"}
-      className={`absolute top-[38%] -translate-y-1/2 z-20 w-8 h-8 rounded-full items-center justify-center shadow-md transition hidden sm:flex ${dir < 0 ? "-left-3" : "-right-3"} ${oculto ? "opacity-0 pointer-events-none" : "opacity-100 hover:scale-105"}`}
+      className={`absolute top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full items-center justify-center shadow-md transition hidden sm:flex ${dir < 0 ? "-left-3" : "-right-3"} ${oculto ? "opacity-0 pointer-events-none" : "opacity-100 hover:scale-105"}`}
       style={{ background: "#fff", color: "#17152B", border: "1px solid #E6E3EE" }}>
       {dir < 0 ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
     </button>
   );
   return (
     <section className="pt-6">
-      <h3 className="text-[15px] font-bold mb-3" style={{ color: "#17152B" }}>{titulo}</h3>
+      <h3 className="text-lg font-bold mb-3 tracking-tight" style={{ color: "#17152B" }}>{titulo}</h3>
       <div className="relative">
         {flecha(-1, lim.ini)}
-        <div ref={ref} onScroll={medir} className="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 pb-2"
-          style={{ "--ancho-tarjeta": `${ANCHO_TARJETA[tam] || 150}px` }}>
+        <div ref={ref} onScroll={medir} className="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth scroll-px-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 pb-2">
           {children}
         </div>
         {flecha(1, lim.fin)}
@@ -1417,70 +1420,69 @@ function CarruselProductos({ titulo, tam, children }) {
 function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones }) {
   const { t, editando } = useEdicion();
   const [showLoc, setShowLoc] = useState(false);
-  // En modo tienda, tocar la foto la muestra en grande junto con la ventana de piezas;
-  // tocar el texto abre la ventana de piezas.
-  const abrir = editando ? undefined : onAdd;
   const verFoto = editando ? undefined : onVerFoto;
   const tecla = (ev) => { if (!editando && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onVerFoto(); } };
   const detalle = [detalleDe(p), p.material].filter(Boolean).join(" · ");
+  const parar = (ev) => ev.stopPropagation();
   return (
-    <div className="tarjeta-producto flex flex-col flex-shrink-0 snap-start" style={{ width: "var(--ancho-tarjeta, 150px)" }}>
-      <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${editando ? "" : "cursor-pointer"}`}
-        style={{ background: "#F3F3F5", aspectRatio: aspecto }}
+    <div className="tarjeta-producto tarjeta-carrusel flex-shrink-0 snap-start">
+      <div className={`tarjeta-foto relative overflow-hidden ${editando ? "" : "cursor-pointer"}`}
+        style={{ background: "#2A2438", aspectRatio: aspecto || "3 / 4" }}
         onClick={verFoto} onKeyDown={tecla} role={editando ? undefined : "button"} tabIndex={editando ? undefined : 0} aria-label={editando ? undefined : `${t("tarjeta.agregar")}: ${p.nombre}`}>
-        {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={18} color="#BDBACC" />}
+        {p.imagen ? <img src={p.imagen} alt={p.nombre} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          : <div className="absolute inset-0 flex items-center justify-center"><ImageOff size={22} color="#8C89A0" /></div>}
+        {/* Velo oscuro abajo para que se lea el texto blanco */}
+        <div className="absolute inset-x-0 bottom-0 h-[62%] pointer-events-none" style={{ background: "linear-gradient(to top, rgba(10,8,20,.78), rgba(10,8,20,.35) 55%, rgba(10,8,20,0))" }} />
+
         {editando && (
-          <span className="absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.9)", color: "#4A4760" }}>
+          <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#4A4760" }}>
             {t("prod.stock", { n: p.cantidad })}
           </span>
         )}
-        <BotonFoto onClick={acciones.foto} className="absolute bottom-1.5 left-1.5" />
         {p.ubicacion && (
-          <>
-            <button
-              onClick={(ev) => { ev.stopPropagation(); setShowLoc((v) => !v); }}
-              className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
-              style={{ background: "rgba(255,255,255,0.85)" }}
-              aria-label={t("tarjeta.info")} title={t("tarjeta.info")}
-            >
-              <Info size={12} color="#4A4760" />
-            </button>
-            {showLoc && (
-              <div onClick={(ev) => { ev.stopPropagation(); setShowLoc(false); }}
-                className="absolute inset-0 flex items-center justify-center p-2 cursor-pointer" style={{ background: "rgba(23,21,43,0.55)" }}>
-                <div className="rounded-lg px-2 py-1.5 shadow-lg text-center w-full" style={{ background: "#F6F5FA" }}>
-                  <T k="tarjeta.ubicacion" as="p" className="text-[8px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
-                  <p className="text-[11px] font-medium mt-0.5" style={{ color: "#17152B" }}>{p.ubicacion}</p>
-                </div>
-              </div>
-            )}
-          </>
+          <button onClick={(ev) => { parar(ev); setShowLoc((v) => !v); }}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition hover:scale-110 z-10"
+            style={{ background: "rgba(255,255,255,0.85)" }} aria-label={t("tarjeta.info")} title={t("tarjeta.info")}>
+            <Info size={13} color="#4A4760" />
+          </button>
         )}
-        {/* Botón de agregar / editar en la esquina inferior derecha de la foto */}
+        <BotonFoto onClick={acciones.foto} className="absolute top-2 left-2 mt-6" />
+
+        {/* Etiqueta sobre la foto: categoría, nombre y precio gigante */}
+        <div className="absolute inset-x-0 bottom-0 p-3 pr-12 text-white sombra-texto">
+          <Editable as="p" className="text-[10px] font-semibold uppercase tracking-[0.08em] truncate opacity-90" onEditar={acciones.categoria} titulo="Cambiar categoría">
+            {p.categoria || (editando ? t("dash.sinCategoria") : "")}
+          </Editable>
+          <Editable as="p" className="text-[13px] sm:text-sm font-bold leading-tight line-clamp-2 mt-0.5" onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
+          <div className="mt-1.5" onClick={editando ? parar : undefined}>
+            <Editable as="span" onEditar={acciones.precio} titulo="Editar precio"><PrecioTienda valor={p.precioVenta} tam={tam} /></Editable>
+          </div>
+          {detalle && <Editable as="p" className="text-[10px] mt-1 truncate opacity-85" onEditar={acciones.form} titulo="Editar producto">{detalle}</Editable>}
+        </div>
+
+        {/* Botón de agregar / editar */}
         {editando ? (
-          <button onClick={(ev) => { ev.stopPropagation(); acciones.form(); }} className="absolute bottom-1.5 right-1.5 w-8 h-8 rounded-full flex items-center justify-center shadow" style={{ background: "var(--colorAcento)", color: "#fff" }} aria-label="Editar producto" title="Editar todos los datos">
-            <Pencil size={13} />
+          <button onClick={(ev) => { parar(ev); acciones.form(); }} className="absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg" style={{ background: "var(--colorAcento)", color: "#fff" }} aria-label="Editar producto" title="Editar todos los datos">
+            <Pencil size={14} />
           </button>
         ) : (
-          <button onClick={(ev) => { ev.stopPropagation(); onAdd(); }}
-            className="absolute bottom-1.5 right-1.5 w-8 h-8 rounded-full flex items-center justify-center shadow transition hover:scale-105"
-            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}
+          <button onClick={(ev) => { parar(ev); onAdd(); }}
+            className="absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition hover:scale-105"
+            style={{ background: "#fff", color: "#17152B" }}
             aria-label={t("tarjeta.agregar")} title={t("tarjeta.agregar")}>
-            <IconoCarritoMas size={14} />
+            <IconoCarritoMas size={16} />
           </button>
         )}
-      </div>
 
-      {/* Etiqueta estilo tienda: categoría, nombre y precio */}
-      <div className={`pt-2 px-0.5 text-left ${editando ? "" : "cursor-pointer"}`} onClick={abrir}>
-        <Editable as="p" className="text-[10px] font-bold uppercase tracking-wide truncate leading-tight" style={{ color: "#17152B" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
-          {p.categoria || (editando ? t("dash.sinCategoria") : "\u00a0")}
-        </Editable>
-        <Editable as="p" className="text-[12px] leading-snug line-clamp-2 mt-0.5 min-h-[2.4em]" style={{ color: "#4A4760" }} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
-        <div className="mt-1.5">
-          <Editable as="span" onEditar={acciones.precio} titulo="Editar precio"><PrecioTienda valor={p.precioVenta} tam={tam} /></Editable>
-        </div>
-        {detalle && <Editable as="p" className="text-[10px] mt-1 truncate" style={{ color: "#8C89A0" }} onEditar={acciones.form} titulo="Editar producto">{detalle}</Editable>}
+        {showLoc && (
+          <div onClick={(ev) => { parar(ev); setShowLoc(false); }}
+            className="absolute inset-0 z-20 flex items-center justify-center p-3 cursor-pointer" style={{ background: "rgba(23,21,43,0.6)" }}>
+            <div className="rounded-lg px-3 py-2 shadow-lg text-center w-full" style={{ background: "#F6F5FA" }}>
+              <T k="tarjeta.ubicacion" as="p" className="text-[9px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
+              <p className="text-xs font-medium mt-0.5" style={{ color: "#17152B" }}>{p.ubicacion}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
