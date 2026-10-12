@@ -5,7 +5,7 @@ import {
   Package, DollarSign, Check, Info,
   Filter, Calendar, Clock, Truck, Tag, BarChart3, ShieldCheck, RotateCcw,
   Eye, EyeOff, Minus, Undo2, LayoutGrid, List, ArrowUpDown, ChevronDown, ChevronUp, Tags, ImagePlus, AlertTriangle, FileUp,
-  ClipboardList, MapPin, Receipt, ArrowUpRight, SlidersHorizontal,
+  ClipboardList, MapPin, Receipt, ArrowUpRight, SlidersHorizontal, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -48,12 +48,6 @@ const DEFAULT_SETTINGS = {
 };
 const CAMPO_TIENDA = { "tienda.nombre": "nombre", "tienda.tagline": "tagline" };
 
-// Tarjetas a la mitad del tamaño anterior (en celular se limita para que se lean).
-const GRID_TARJETAS = {
-  chico: "grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2 gap-y-4",
-  normal: "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-x-2.5 gap-y-5",
-  grande: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3.5 gap-y-6",
-};
 const ORDENES_CATALOGO = [
   ["recomendado", "catalogo.ordenRecomendado"],
   ["nombre", "catalogo.ordenNombre"],
@@ -1230,6 +1224,18 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
     else if (orden === "cantidad") lista.sort((a, b) => (b.cantidad || 0) - (a.cantidad || 0));
     return lista;
   }, [products, orden]);
+  // Vista de carrusel: una fila deslizable por categoría (o una sola si hay filtro/búsqueda).
+  const gruposCarrusel = useMemo(() => {
+    if (activeCat !== "Todas" || query.trim()) return ordenados.length ? [[activeCat !== "Todas" ? activeCat : t("catalogo.resultados"), ordenados]] : [];
+    const mapa = new Map();
+    ordenados.forEach((p) => {
+      const c = p.categoria || t("catalogo.otros");
+      if (!mapa.has(c)) mapa.set(c, []);
+      mapa.get(c).push(p);
+    });
+    const orden = [...categorias, ...[...mapa.keys()].filter((c) => !categorias.includes(c))];
+    return orden.filter((c) => mapa.has(c)).map((c) => [c, mapa.get(c)]);
+  }, [ordenados, activeCat, query, categorias, t]);
   const accionesDe = (p) => ({
     foto: () => acciones.foto(p), form: () => acciones.form(p),
     nombre: () => acciones.campo(p, "nombre"), precio: () => acciones.campo(p, "precioVenta"), categoria: () => acciones.campo(p, "categoria"),
@@ -1329,14 +1335,18 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
                 ))}
               </div>
             ) : (
-            <div className={`${GRID_TARJETAS[tam] || GRID_TARJETAS.normal} pt-4`}>
+            <div className="pt-2">
               {editando && (
-                <button type="button" onClick={acciones.nuevo} className="rounded-[18px] border-2 border-dashed flex flex-col items-center justify-center gap-1.5 text-xs p-3" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)", minHeight: 110 }}>
+                <button type="button" onClick={acciones.nuevo} className="w-full mt-3 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 text-sm py-4" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)" }}>
                   <Plus size={18} /> Agregar producto
                 </button>
               )}
-              {ordenados.map((p) => (
-                <ProductCard key={p.id} p={p} onAdd={() => onAdd(p)} onVerFoto={() => onAdd(p, { grande: true })} aspecto={aspectoCss(settings.fotoAspecto)} tam={tam} acciones={accionesDe(p)} />
+              {gruposCarrusel.map(([titulo, lista]) => (
+                <CarruselProductos key={titulo} titulo={titulo} tam={tam}>
+                  {lista.map((p) => (
+                    <ProductCard key={p.id} p={p} onAdd={() => onAdd(p)} onVerFoto={() => onAdd(p, { grande: true })} aspecto={aspectoCss(settings.fotoAspecto)} tam={tam} acciones={accionesDe(p)} />
+                  ))}
+                </CarruselProductos>
               ))}
             </div>
             )
@@ -1348,40 +1358,79 @@ function ClienteView({ products, query, setQuery, activeCat, setActiveCat, categ
   );
 }
 
-// Tamaños de las tarjetas (la mitad de los anteriores).
-const ESTILO_TARJETA = {
-  chico: { radio: "rounded-[14px]", pad: "p-1.5 pr-6", nombre: "text-[10px]", cat: "text-[8px]", boton: "w-7 h-7", icono: 12, mt: "-mt-[14px]", precio: "text-xs", extra: "text-[9px]", info: "w-5 h-5 top-1.5 right-1.5", infoIcono: 10 },
-  normal: { radio: "rounded-[16px]", pad: "p-2 pr-7", nombre: "text-[11px] sm:text-xs", cat: "text-[9px]", boton: "w-8 h-8", icono: 14, mt: "-mt-[16px]", precio: "text-sm", extra: "text-[10px]", info: "w-5 h-5 top-2 right-2", infoIcono: 11 },
-  grande: { radio: "rounded-[20px]", pad: "p-2.5 pr-8", nombre: "text-xs sm:text-sm", cat: "text-[10px]", boton: "w-9 h-9", icono: 15, mt: "-mt-[18px]", precio: "text-base", extra: "text-[11px]", info: "w-6 h-6 top-2 right-2", infoIcono: 12 },
-};
+// Ancho de cada tarjeta dentro del carrusel según el tamaño elegido en Diseño.
+const ANCHO_TARJETA = { chico: 118, normal: 150, grande: 190 };
+const ROJO_PRECIO = "#D7192D";
+
+// Precio estilo tienda departamental: pesos grandes y centavos en superíndice.
+function PrecioTienda({ valor, tam }) {
+  const v = Math.round((Number(valor) || 0) * 100) / 100;
+  const enteros = Math.floor(v).toLocaleString("es-MX");
+  const centavos = String(Math.round((v - Math.floor(v)) * 100)).padStart(2, "0");
+  const grande = { chico: "text-sm", normal: "text-base", grande: "text-lg" }[tam] || "text-base";
+  return (
+    <span className={`${grande} font-bold leading-none whitespace-nowrap`} style={{ color: ROJO_PRECIO }}>
+      ${enteros}<sup className="text-[0.55em] font-bold ml-px" style={{ top: "-0.6em" }}>{centavos}</sup>
+    </span>
+  );
+}
+
+// Fila de productos deslizable a la izquierda/derecha con flechas.
+function CarruselProductos({ titulo, tam, children }) {
+  const ref = useRef(null);
+  const [lim, setLim] = useState({ ini: true, fin: false });
+  const medir = useCallback(() => {
+    const el = ref.current; if (!el) return;
+    setLim({ ini: el.scrollLeft <= 4, fin: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 });
+  }, []);
+  useEffect(() => {
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [medir, children]);
+  const mover = (dir) => {
+    const el = ref.current; if (!el) return;
+    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.8, ANCHO_TARJETA[tam] || 150), behavior: "smooth" });
+  };
+  const flecha = (dir, oculto) => (
+    <button type="button" onClick={() => mover(dir)} disabled={oculto} aria-label={dir < 0 ? "Ver anteriores" : "Ver siguientes"}
+      className={`absolute top-[38%] -translate-y-1/2 z-20 w-8 h-8 rounded-full items-center justify-center shadow-md transition hidden sm:flex ${dir < 0 ? "-left-3" : "-right-3"} ${oculto ? "opacity-0 pointer-events-none" : "opacity-100 hover:scale-105"}`}
+      style={{ background: "#fff", color: "#17152B", border: "1px solid #E6E3EE" }}>
+      {dir < 0 ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+    </button>
+  );
+  return (
+    <section className="pt-6">
+      <h3 className="text-[15px] font-bold mb-3" style={{ color: "#17152B" }}>{titulo}</h3>
+      <div className="relative">
+        {flecha(-1, lim.ini)}
+        <div ref={ref} onScroll={medir} className="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 pb-2"
+          style={{ "--ancho-tarjeta": `${ANCHO_TARJETA[tam] || 150}px` }}>
+          {children}
+        </div>
+        {flecha(1, lim.fin)}
+      </div>
+    </section>
+  );
+}
 
 function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones }) {
   const { t, editando } = useEdicion();
   const [showLoc, setShowLoc] = useState(false);
-  const e = ESTILO_TARJETA[tam] || ESTILO_TARJETA.normal;
   // En modo tienda, tocar la foto la muestra en grande junto con la ventana de piezas;
   // tocar el texto abre la ventana de piezas.
   const abrir = editando ? undefined : onAdd;
   const verFoto = editando ? undefined : onVerFoto;
   const tecla = (ev) => { if (!editando && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onVerFoto(); } };
+  const detalle = [detalleDe(p), p.material].filter(Boolean).join(" · ");
   return (
-    <div className="tarjeta-producto flex flex-col">
-      <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${e.radio} ${editando ? "" : "cursor-pointer"}`}
-        style={{ background: "#EEEDF3", aspectRatio: aspecto }}
+    <div className="tarjeta-producto flex flex-col flex-shrink-0 snap-start" style={{ width: "var(--ancho-tarjeta, 150px)" }}>
+      <div className={`tarjeta-foto relative flex items-center justify-center overflow-hidden ${editando ? "" : "cursor-pointer"}`}
+        style={{ background: "#F3F3F5", aspectRatio: aspecto }}
         onClick={verFoto} onKeyDown={tecla} role={editando ? undefined : "button"} tabIndex={editando ? undefined : 0} aria-label={editando ? undefined : `${t("tarjeta.agregar")}: ${p.nombre}`}>
         {p.imagen ? <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={18} color="#BDBACC" />}
-        {/* Nombre y categoría sobre la foto, como en un catálogo editorial */}
-        <div className={`absolute inset-x-0 top-0 ${e.pad} pointer-events-none`}
-          style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.6) 60%, rgba(255,255,255,0))" }}>
-          <div className="pointer-events-auto">
-            <Editable as="p" className={`font-display ${e.nombre} leading-tight line-clamp-2`} style={{ color: "#17152B" }} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
-            <Editable as="p" className={`${e.cat} mt-0.5 truncate`} style={{ color: "#4A4760" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
-              {p.categoria || (editando ? t("dash.sinCategoria") : "")}
-            </Editable>
-          </div>
-        </div>
         {editando && (
-          <span className="absolute bottom-1.5 right-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.9)", color: "#4A4760" }}>
+          <span className="absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.9)", color: "#4A4760" }}>
             {t("prod.stock", { n: p.cantidad })}
           </span>
         )}
@@ -1390,18 +1439,15 @@ function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones })
           <>
             <button
               onClick={(ev) => { ev.stopPropagation(); setShowLoc((v) => !v); }}
-              className={`absolute ${e.info} rounded-full flex items-center justify-center transition hover:scale-110`}
+              className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
               style={{ background: "rgba(255,255,255,0.85)" }}
               aria-label={t("tarjeta.info")} title={t("tarjeta.info")}
             >
-              <Info size={e.infoIcono} color="#4A4760" />
+              <Info size={12} color="#4A4760" />
             </button>
             {showLoc && (
-              <div
-                onClick={(ev) => { ev.stopPropagation(); setShowLoc(false); }}
-                className="absolute inset-0 flex items-center justify-center p-2 cursor-pointer"
-                style={{ background: "rgba(23,21,43,0.55)" }}
-              >
+              <div onClick={(ev) => { ev.stopPropagation(); setShowLoc(false); }}
+                className="absolute inset-0 flex items-center justify-center p-2 cursor-pointer" style={{ background: "rgba(23,21,43,0.55)" }}>
                 <div className="rounded-lg px-2 py-1.5 shadow-lg text-center w-full" style={{ background: "#F6F5FA" }}>
                   <T k="tarjeta.ubicacion" as="p" className="text-[8px] tracking-widest uppercase block" style={{ color: "var(--colorAcento)" }} />
                   <p className="text-[11px] font-medium mt-0.5" style={{ color: "#17152B" }}>{p.ubicacion}</p>
@@ -1410,28 +1456,31 @@ function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones })
             )}
           </>
         )}
-      </div>
-
-      {/* Botón circular que monta sobre el borde inferior de la foto */}
-      <div className={`relative z-10 flex justify-center pointer-events-none [&>*]:pointer-events-auto ${e.mt}`}>
+        {/* Botón de agregar / editar en la esquina inferior derecha de la foto */}
         {editando ? (
-          <button onClick={acciones.form} className={`${e.boton} rounded-full flex items-center justify-center`} style={{ background: "var(--colorAcento)", color: "#fff", boxShadow: "0 0 0 3px var(--colorFondo)" }} aria-label="Editar producto" title="Editar todos los datos">
-            <Pencil size={e.icono - 2} />
+          <button onClick={(ev) => { ev.stopPropagation(); acciones.form(); }} className="absolute bottom-1.5 right-1.5 w-8 h-8 rounded-full flex items-center justify-center shadow" style={{ background: "var(--colorAcento)", color: "#fff" }} aria-label="Editar producto" title="Editar todos los datos">
+            <Pencil size={13} />
           </button>
         ) : (
-          <button onClick={onAdd}
-            className={`${e.boton} rounded-full flex items-center justify-center transition hover:scale-105`}
-            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)", boxShadow: "0 0 0 3px var(--colorFondo)" }}
+          <button onClick={(ev) => { ev.stopPropagation(); onAdd(); }}
+            className="absolute bottom-1.5 right-1.5 w-8 h-8 rounded-full flex items-center justify-center shadow transition hover:scale-105"
+            style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}
             aria-label={t("tarjeta.agregar")} title={t("tarjeta.agregar")}>
-            <IconoCarritoMas size={e.icono} />
+            <IconoCarritoMas size={14} />
           </button>
         )}
       </div>
 
-      <div className={`text-center pt-1 px-0.5 ${editando ? "" : "cursor-pointer"}`} onClick={abrir}>
-        <Editable as="span" className={`font-display ${e.precio} leading-none`} style={{ color: "#17152B" }} onEditar={acciones.precio} titulo="Editar precio">{money(p.precioVenta)}</Editable>
-        {(p.talla || p.color) && <Editable as="p" className={`${e.extra} mt-0.5 truncate`} style={{ color: "#8C89A0" }} onEditar={acciones.form} titulo="Editar producto">{detalleDe(p)}</Editable>}
-        {(p.material || p.grupo) && <Editable as="p" className={`${e.extra} truncate`} style={{ color: "#A9A6BA" }} onEditar={acciones.form} titulo="Editar producto">{[p.material, p.grupo].filter(Boolean).join(" · ")}</Editable>}
+      {/* Etiqueta estilo tienda: categoría, nombre y precio */}
+      <div className={`pt-2 px-0.5 text-left ${editando ? "" : "cursor-pointer"}`} onClick={abrir}>
+        <Editable as="p" className="text-[10px] font-bold uppercase tracking-wide truncate leading-tight" style={{ color: "#17152B" }} onEditar={acciones.categoria} titulo="Cambiar categoría">
+          {p.categoria || (editando ? t("dash.sinCategoria") : "\u00a0")}
+        </Editable>
+        <Editable as="p" className="text-[12px] leading-snug line-clamp-2 mt-0.5 min-h-[2.4em]" style={{ color: "#4A4760" }} onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
+        <div className="mt-1.5">
+          <Editable as="span" onEditar={acciones.precio} titulo="Editar precio"><PrecioTienda valor={p.precioVenta} tam={tam} /></Editable>
+        </div>
+        {detalle && <Editable as="p" className="text-[10px] mt-1 truncate" style={{ color: "#8C89A0" }} onEditar={acciones.form} titulo="Editar producto">{detalle}</Editable>}
       </div>
     </div>
   );

@@ -61,6 +61,8 @@ export const TEXTOS = [
   ["catalogo.portadaAlt", "Descripción de la imagen de portada", "Portada de {tienda}"],
 
   // Tarjetas
+  ["catalogo.resultados", "Título del carrusel al filtrar o buscar", "Productos"],
+  ["catalogo.otros", "Título del carrusel de productos sin categoría", "Otros productos"],
   ["tarjeta.info", "Botón de información", "Información"],
   ["tarjeta.ubicacion", "Título de la ubicación", "Ubicación"],
   ["tarjeta.agregar", "Botón para agregar al pedido", "Agregar al pedido"],
