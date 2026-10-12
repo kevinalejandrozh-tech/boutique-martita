@@ -1427,12 +1427,12 @@ function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones })
   return (
     <div className="tarjeta-producto tarjeta-carrusel flex-shrink-0 snap-start">
       <div className={`tarjeta-foto relative overflow-hidden ${editando ? "" : "cursor-pointer"}`}
-        style={{ background: "#2A2438", aspectRatio: aspecto || "3 / 4" }}
+        style={{ background: "#2A2438", aspectRatio: "3 / 4.4" }}
         onClick={verFoto} onKeyDown={tecla} role={editando ? undefined : "button"} tabIndex={editando ? undefined : 0} aria-label={editando ? undefined : `${t("tarjeta.agregar")}: ${p.nombre}`}>
         {p.imagen ? <img src={p.imagen} alt={p.nombre} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
           : <div className="absolute inset-0 flex items-center justify-center"><ImageOff size={22} color="#8C89A0" /></div>}
         {/* Velo oscuro abajo para que se lea el texto blanco */}
-        <div className="absolute inset-x-0 bottom-0 h-[62%] pointer-events-none" style={{ background: "linear-gradient(to top, rgba(10,8,20,.78), rgba(10,8,20,.35) 55%, rgba(10,8,20,0))" }} />
+        <div className="absolute inset-x-0 bottom-0 h-[55%] pointer-events-none" style={{ background: "linear-gradient(to top, rgba(10,8,20,.75), rgba(10,8,20,.3) 55%, rgba(10,8,20,0))" }} />
 
         {editando && (
           <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#4A4760" }}>
