@@ -2,14 +2,14 @@
 // Compra del cliente: cantidad, sugerencia, carrito en el encabezado y pedido
 // con método de pago y entrega.
 // ---------------------------------------------------------------------------
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Minus, Plus, Trash2, ShoppingCart, Check, Copy, AlertTriangle, MapPin, Landmark, Banknote,
   CreditCard, Send, ImageOff, Pencil, Truck, Search,
 } from "lucide-react";
 import { Modal, inputCls, inputStyle } from "./ui";
 import { T, useEdicion } from "./edicion";
-import { money, totalesPedido, MARCA, NUMERO_TRANSFERENCIA, numeroAgrupado, normalizar, soloDigitos } from "./negocio";
+import { money, totalesPedido, MARCA, NUMERO_TRANSFERENCIA, numeroAgrupado, normalizar, soloDigitos, esVariable, claveVariante } from "./negocio";
 
 const VERDE = "#2F8542";
 
@@ -77,7 +77,137 @@ function FichaProducto({ p }) {
 // 1) ¿Cuántas piezas?
 // ---------------------------------------------------------------------------
 // `grande`: muestra la foto del artículo en grande (al tocar la imagen en la cuadrícula).
-export function CantidadModal({ p, maximo, grande, onConfirmar, onCerrar }) {
+// Prendas con tallas y colores: el cliente elige color y talla antes de la cantidad.
+export function CantidadModal({ p, maximo, grande, disponibleVariante, cargarFotoColor, onConfirmar, onCerrar }) {
+  if (esVariable(p)) {
+    return <ModeloModal p={p} disponibleVariante={disponibleVariante} cargarFotoColor={cargarFotoColor} onConfirmar={onConfirmar} onCerrar={onCerrar} />;
+  }
+  return <CantidadSimple p={p} maximo={maximo} grande={grande} onConfirmar={onConfirmar} onCerrar={onCerrar} />;
+}
+
+function Etiqueta({ k }) {
+  return <T k={k} as="p" className="text-[11px] font-semibold tracking-[0.14em] uppercase mb-2 block" style={{ color: VERDE }} />;
+}
+
+function ModeloModal({ p, disponibleVariante, cargarFotoColor, onConfirmar, onCerrar }) {
+  const { t } = useEdicion();
+  const disp = (cid, talla) => disponibleVariante(claveVariante(cid, talla));
+  const dispColor = (cid) => p.tallas.reduce((s, ta) => s + disp(cid, ta), 0);
+  const unicaTalla = (cid) => { const l = p.tallas.filter((ta) => disp(cid, ta) > 0); return l.length === 1 ? l[0] : null; };
+
+  const [colorId, setColorId] = useState(() => (p.colores.find((c) => dispColor(c.id) > 0) || p.colores[0]).id);
+  const [talla, setTalla] = useState(() => unicaTalla(colorId));
+  const [qty, setQty] = useState(1);
+  const [fotos, setFotos] = useState({});
+
+  // Fotos de cada color: se descargan al abrir el modelo (primero la del color elegido).
+  useEffect(() => {
+    let vivo = true;
+    const orden = [...p.colores].sort((a, b) => (a.id === colorId ? -1 : b.id === colorId ? 1 : 0));
+    orden.filter((c) => c.foto && cargarFotoColor).forEach((c) => {
+      cargarFotoColor(p.id, c.id).then((src) => { if (vivo && src) setFotos((f) => ({ ...f, [c.id]: src })); }).catch(() => {});
+    });
+    return () => { vivo = false; };
+  }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const color = p.colores.find((c) => c.id === colorId) || p.colores[0];
+  const foto = fotos[color.id] || (color.foto ? color.mini : null) || p.imagen;
+  const max = talla ? disp(color.id, talla) : 0;
+  const agotadoColor = dispColor(color.id) <= 0;
+
+  const elegirColor = (cid) => {
+    setColorId(cid);
+    if (!talla || disp(cid, talla) <= 0) setTalla(unicaTalla(cid));
+    setQty(1);
+  };
+  const elegirTalla = (ta) => { setTalla(ta); setQty((q) => Math.max(1, Math.min(q, disp(color.id, ta)))); };
+
+  return (
+    <Modal onClose={onCerrar} title={<T k="compra.cuantasTitulo" />} wide>
+      <div className="rounded-2xl overflow-hidden flex items-center justify-center -mt-1 mb-3" style={{ background: "#EEEDF3", minHeight: 160 }}>
+        {foto ? <img src={foto} alt={`${p.nombre} ${color.nombre}`} className="w-full h-auto max-h-[46vh] object-contain block" />
+          : <ImageOff size={26} color="#BDBACC" className="my-14" />}
+      </div>
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {p.clave && (
+            <>
+              <p className="font-display text-3xl leading-none" style={{ fontWeight: 800 }}>{p.clave}</p>
+              <span className="block h-[3px] w-14 rounded-full mt-1.5 mb-1.5" style={{ background: VERDE }} />
+            </>
+          )}
+          <p className={p.clave ? "text-sm leading-snug" : "font-display text-lg leading-snug"} style={{ color: p.clave ? "#4A4760" : undefined }}>{p.nombre}</p>
+        </div>
+        <p className="font-display text-2xl flex-shrink-0 rounded-2xl px-3.5 py-1.5" style={{ border: "1px solid #E3E0EC", background: "#fff", fontWeight: 800 }}>{money(p.precioVenta)}</p>
+      </div>
+
+      {/* Colores */}
+      <div className="mt-4">
+        <Etiqueta k="compra.colores" />
+        <div className="flex flex-wrap gap-2">
+          {p.colores.map((c) => {
+            const activo = c.id === color.id;
+            const sinPiezas = dispColor(c.id) <= 0;
+            const marco = { boxShadow: activo ? "0 0 0 2px var(--colorAcento)" : "0 0 0 1px #E3E0EC", opacity: sinPiezas && !activo ? 0.45 : 1 };
+            return c.mini ? (
+              <button key={c.id} type="button" onClick={() => elegirColor(c.id)} className="flex flex-col items-center gap-1 w-14" aria-pressed={activo} title={c.nombre}>
+                <span className="w-12 h-12 rounded-lg overflow-hidden block" style={marco}><img src={c.mini} alt="" className="w-full h-full object-cover" /></span>
+                <span className={`text-[10px] leading-tight text-center ${sinPiezas ? "line-through" : ""}`} style={{ color: "#4A4760" }}>{c.nombre}</span>
+              </button>
+            ) : (
+              <button key={c.id} type="button" onClick={() => elegirColor(c.id)} aria-pressed={activo}
+                className={`text-xs px-3.5 py-2 rounded-full self-start ${sinPiezas ? "line-through" : ""}`}
+                style={{ ...marco, background: activo ? "#F1EDF9" : "#fff", color: "#17152B" }}>
+                {c.nombre}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tallas */}
+      <div className="mt-4">
+        <Etiqueta k="compra.tallas" />
+        <div className="flex flex-wrap gap-2">
+          {p.tallas.map((ta) => {
+            const n = disp(color.id, ta);
+            const activo = talla === ta;
+            return (
+              <button key={ta} type="button" disabled={n <= 0} onClick={() => elegirTalla(ta)} aria-pressed={activo}
+                className={`min-w-[46px] h-10 px-3 rounded-lg text-sm font-medium border transition disabled:opacity-35 ${n <= 0 ? "line-through" : ""}`}
+                style={activo ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" } : { background: "#fff", color: "#17152B", borderColor: "#CFE3D3" }}>
+                {ta}
+              </button>
+            );
+          })}
+        </div>
+        {agotadoColor && <T k="compra.agotadoColor" as="p" className="text-xs mt-2 block" style={{ color: "#9C3B3B" }} />}
+      </div>
+
+      {talla && max > 0 ? (
+        <>
+          <div className="flex items-center justify-between mt-5">
+            <Contador valor={Math.min(qty, max)} max={max} onCambiar={setQty} grande />
+            <div className="text-right">
+              <p className="text-[11px]" style={{ color: "#8C89A0" }}>{t("compra.disponibles", { n: max })}</p>
+              <p className="font-display text-xl">{money((Number(p.precioVenta) || 0) * Math.min(qty, max))}</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => onConfirmar(Math.min(qty, max), claveVariante(color.id, talla))} className="w-full mt-4 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium" style={{ background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}>
+            <ShoppingCart size={15} /> {t("compra.agregar")} · {color.nombre} · {talla}
+          </button>
+        </>
+      ) : (
+        <button type="button" disabled className="w-full mt-5 rounded-xl py-3 text-sm font-medium" style={{ background: "#E9E6F0", color: "#8C89A0" }}>
+          {agotadoColor ? t("compra.agotadoColor") : t("compra.eligeTalla")}
+        </button>
+      )}
+    </Modal>
+  );
+}
+
+function CantidadSimple({ p, maximo, grande, onConfirmar, onCerrar }) {
   const { t } = useEdicion();
   const [qty, setQty] = useState(1);
   return (
@@ -89,6 +219,7 @@ export function CantidadModal({ p, maximo, grande, onConfirmar, onCerrar }) {
           </div>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
+              {p.clave && <p className="font-display text-2xl leading-none mb-1" style={{ fontWeight: 800 }}>{p.clave}</p>}
               <p className="font-display text-lg leading-snug">{p.nombre}</p>
               {[p.talla, p.color].some(Boolean) && <p className="text-xs" style={{ color: "#8C89A0" }}>{[p.talla, p.color].filter(Boolean).join(" · ")}</p>}
             </div>
@@ -178,7 +309,11 @@ export function Checkout({ cart, stockDe, colonias, compra, setCompra, onQty, on
   const set = (k, v) => setCompra((c) => ({ ...c, [k]: v }));
 
   const colonia = colonias.find((c) => c.id === compra.coloniaId) || null;
-  const items = cart.map((i) => ({ id: i.id, nombre: i.nombre, detalle: i.detalle || "", precio: Number(i.precioVenta) || 0, qty: i.qty }));
+  // `id` es el producto; en prendas, `variante` indica la talla y el color.
+  const items = cart.map((i) => ({
+    id: i.productoId || i.id, nombre: i.nombre, detalle: i.detalle || "", precio: Number(i.precioVenta) || 0, qty: i.qty,
+    ...(i.variante ? { variante: i.variante, color: i.color || "", talla: i.talla || "" } : {}),
+  }));
   const tot = totalesPedido(items, colonia, compra.metodo);
   const piezas = items.reduce((s, i) => s + i.qty, 0);
 

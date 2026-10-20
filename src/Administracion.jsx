@@ -12,6 +12,7 @@ import { Modal, Field, inputCls, inputStyle } from "./ui";
 import {
   money, uid, hoyStr, normalizar, redondear, formatoFolio, totalesOC, IVA, CONCEPTOS_GASTO, conceptoNombre,
   guardarOrdenCompra, eliminarOrdenCompra, guardarGasto, eliminarGasto, guardarEmbalaje, COLONIAS_IZCALLI,
+  esVariable, datosVariante, claveVariante, stockVariante,
 } from "./negocio";
 
 const VERDE = "#2F8542";
@@ -45,14 +46,16 @@ function Pildora({ activo, onClick, children }) {
 // ===========================================================================
 // ORDEN DE COMPRA
 // ===========================================================================
-const filaVacia = () => ({ key: uid(), cantidad: "", articulo: "", productoId: null, costo: "", precio: "" });
+// En prendas con tallas y colores, cada renglón lleva el color (`colorId`) y la talla (`tallaSel`).
+const filaVacia = () => ({ key: uid(), cantidad: "", articulo: "", productoId: null, costo: "", precio: "", colorId: "", tallaSel: "" });
 const filaConDatos = (i) => (i.articulo || "").trim() || i.cantidad !== "" || i.costo !== "" || i.precio !== "";
 const conFilaFinal = (items) => (items.length && !filaConDatos(items[items.length - 1]) ? items : [...items, filaVacia()]);
+const desdeVariante = (v) => { const [c, ...t] = String(v || "").split("|"); return v ? { colorId: c, tallaSel: t.join("|") } : { colorId: "", tallaSel: "" }; };
 
 export function OrdenCompraModal({ oc, products, categorias, onCerrar, avisar }) {
   const soloLectura = oc?.estado === "recibida";
   const [d, setD] = useState(() => (oc
-    ? { ...oc, costoEnvio: oc.costoEnvio || "", items: (soloLectura ? (x) => x : conFilaFinal)((oc.items || []).map((i) => ({ ...i, key: uid() }))) }
+    ? { ...oc, costoEnvio: oc.costoEnvio || "", items: (soloLectura ? (x) => x : conFilaFinal)((oc.items || []).map((i) => ({ ...i, ...desdeVariante(i.variante), key: uid() }))) }
     : {
       proveedor: "", direccion: "", telefono: "", envioGratis: true, costoEnvio: "",
       fechaSolicitud: hoyStr(), fechaRecepcion: hoyStr(), ivaIncluido: true, categoriaNuevos: "",
@@ -76,7 +79,7 @@ export function OrdenCompraModal({ oc, products, categorias, onCerrar, avisar })
   const sugerencias = (i) => {
     const term = normalizar(i.articulo);
     if (!term) return [];
-    return products.filter((p) => p.id !== i.productoId && normalizar(p.nombre).includes(term)).slice(0, 8);
+    return products.filter((p) => p.id !== i.productoId && normalizar(`${p.clave || ""} ${p.nombre}`).includes(term)).slice(0, 8);
   };
 
   const elegir = (key, p) => {
@@ -87,16 +90,35 @@ export function OrdenCompraModal({ oc, products, categorias, onCerrar, avisar })
         costo: i.costo !== "" ? i.costo : (Number(p.precioCompra) || ""),
         precio: i.precio !== "" ? i.precio : (Number(p.precioVenta) || ""),
         cantidad: i.cantidad !== "" ? i.cantidad : 1,
+        colorId: esVariable(p) && p.colores.length === 1 ? p.colores[0].id : "",
+        tallaSel: esVariable(p) && p.tallas.length === 1 ? p.tallas[0] : "",
       }))),
     }));
     setActiva(null);
   };
 
+  // Otro renglón del mismo modelo (otra talla o color), justo debajo.
+  const duplicarFila = (key) => setD((x) => {
+    const k = x.items.findIndex((i) => i.key === key);
+    if (k < 0) return x;
+    const base = x.items[k];
+    const copia = { ...filaVacia(), articulo: base.articulo, productoId: base.productoId, costo: base.costo, precio: base.precio, colorId: base.colorId };
+    return { ...x, items: conFilaFinal([...x.items.slice(0, k + 1), copia, ...x.items.slice(k + 1)]) };
+  });
+
+  const varianteDe = (i, p) => (p && esVariable(p) && i.colorId && i.tallaSel ? datosVariante(p, claveVariante(i.colorId, i.tallaSel)) : null);
+
   const guardar = async (recibir) => {
     setError("");
+    const faltaTalla = validos.filter((i) => { const p = productoDe(i); return p && esVariable(p) && !varianteDe(i, p); });
+    if (faltaTalla.length) { setError(`Elige color y talla de: ${[...new Set(faltaTalla.map((i) => i.articulo.trim()))].join(", ")}.`); return; }
     const items = validos.map((i) => {
       const p = productoDe(i);
-      return { cantidad: Math.floor(Number(i.cantidad) || 0), articulo: i.articulo.trim(), productoId: p ? p.id : null, costo: Number(i.costo) || 0, precio: Number(i.precio) || 0 };
+      const v = varianteDe(i, p);
+      return {
+        cantidad: Math.floor(Number(i.cantidad) || 0), articulo: i.articulo.trim(), productoId: p ? p.id : null, costo: Number(i.costo) || 0, precio: Number(i.precio) || 0,
+        ...(v ? { variante: v.clave, color: v.color, talla: v.talla } : {}),
+      };
     });
     if (!items.length) { setError("Agrega al menos un artículo con cantidad."); return; }
     if (recibir && !window.confirm(`¿Recibir la orden de compra? Se sumarán ${piezas} pieza(s) al catálogo${nuevos ? ` y se crearán ${nuevos} artículo(s) nuevo(s)` : ""}.`)) return;
@@ -182,14 +204,18 @@ export function OrdenCompraModal({ oc, products, categorias, onCerrar, avisar })
                           onChange={(e) => {
                             const texto = e.target.value;
                             const vinculado = i.productoId && products.find((x) => x.id === i.productoId);
-                            setFila(i.key, { articulo: texto, productoId: vinculado && normalizar(vinculado.nombre) === normalizar(texto) ? i.productoId : null });
+                            const sigue = vinculado && normalizar(vinculado.nombre) === normalizar(texto);
+                            setFila(i.key, { articulo: texto, productoId: sigue ? i.productoId : null, ...(sigue ? {} : { colorId: "", tallaSel: "" }) });
                             setActiva(i.key);
                           }}
                           onFocus={() => setActiva(i.key)} onBlur={() => setTimeout(() => setActiva((a) => (a === i.key ? null : a)), 180)}
                           className={celda} />
-                        {(i.articulo || "").trim() && (
+                        {p && esVariable(p) ? (
+                          <FilaVariante i={i} p={p} v={varianteDe(i, p)} soloLectura={soloLectura}
+                            onCambiar={(cambios) => setFila(i.key, cambios)} onOtra={() => duplicarFila(i.key)} />
+                        ) : (i.articulo || "").trim() && (
                           <span className="block px-2 pb-1.5 text-[10px] font-medium" style={{ color: p ? VERDE : "var(--colorAcento)" }}>
-                            {p ? `En catálogo · se suman a ${p.cantidad} pza` : "Artículo nuevo"}
+                            {p ? `En catálogo · se suman a ${p.cantidad} pza` : soloLectura && i.talla ? `${i.color} · ${i.talla}` : "Artículo nuevo"}
                           </span>
                         )}
                       </td>
@@ -216,7 +242,7 @@ export function OrdenCompraModal({ oc, products, categorias, onCerrar, avisar })
                             {sug.map((s) => (
                               <button key={s.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => elegir(i.key, s)}
                                 className="text-left rounded-lg px-3 py-2 flex items-center justify-between gap-2" style={{ background: "#fff" }}>
-                                <span className="text-sm truncate">{s.nombre}{s.talla || s.color ? <span style={{ color: GRIS }}> · {[s.talla, s.color].filter(Boolean).join(" · ")}</span> : null}</span>
+                                <span className="text-sm truncate">{s.clave ? <strong>{s.clave} </strong> : null}{s.nombre}{s.talla || s.color ? <span style={{ color: GRIS }}> · {[s.talla, s.color].filter(Boolean).join(" · ")}</span> : null}</span>
                                 <span className="text-[11px] flex-shrink-0" style={{ color: GRIS }}>{s.cantidad} pza · {money(s.precioVenta)}</span>
                               </button>
                             ))}
@@ -279,6 +305,36 @@ export function OrdenCompraModal({ oc, products, categorias, onCerrar, avisar })
         </div>
       )}
     </Modal>
+  );
+}
+
+// Color y talla de un renglón de la orden de compra (prendas con tallas y colores).
+function FilaVariante({ i, p, v, soloLectura, onCambiar, onOtra }) {
+  const sel = "rounded-lg border px-2 py-1.5 text-xs bg-white outline-none min-w-0 flex-1";
+  if (soloLectura) {
+    return <span className="block px-2 pb-1.5 text-[10px] font-medium" style={{ color: VERDE }}>{[i.color, i.talla].filter(Boolean).join(" · ") || "En catálogo"}</span>;
+  }
+  return (
+    <div className="px-2 pb-2">
+      <div className="flex gap-1.5">
+        <select value={i.colorId || ""} onChange={(e) => onCambiar({ colorId: e.target.value })} className={sel} style={{ borderColor: i.colorId ? "#DCD8E8" : "#E7B9B9" }} aria-label="Color">
+          <option value="">Color…</option>
+          {p.colores.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
+        <select value={i.tallaSel || ""} onChange={(e) => onCambiar({ tallaSel: e.target.value })} className={sel} style={{ borderColor: i.tallaSel ? "#DCD8E8" : "#E7B9B9" }} aria-label="Talla">
+          <option value="">Talla…</option>
+          {p.tallas.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <span className="text-[10px] font-medium" style={{ color: v ? VERDE : ROJO }}>
+          {v ? `Se suman a ${stockVariante(p, v.clave)} pza de ${v.texto}` : "Elige color y talla"}
+        </span>
+        <button type="button" onClick={onOtra} className="text-[10px] font-medium flex items-center gap-0.5 flex-shrink-0" style={{ color: "var(--colorAcento)" }}>
+          <Plus size={11} /> Otra talla/color
+        </button>
+      </div>
+    </div>
   );
 }
 
