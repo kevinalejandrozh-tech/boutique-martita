@@ -25,11 +25,33 @@ export const CONCEPTOS_GASTO = [["envio", "Envíos"], ["traslado", "Traslados"],
 export const conceptoNombre = (c) => (CONCEPTOS_GASTO.find(([k]) => k === c) || [, "Otros"])[1];
 
 export const EMPTY_PRODUCT = {
-  nombre: "", categoria: "", subcategoria: "", color: "", talla: "",
+  nombre: "", clave: "", categoria: "", subcategoria: "", color: "", talla: "",
   material: "", genero: "", grupo: "", precioVenta: "", precioCompra: "", cantidad: 1,
   ubicacion: "", imagen: null, disponible: true, oculto: false,
   fechaCompra: "", proveedor: "", vendidaAt: null, ventas: [],
+  // Prendas con tallas y colores (un modelo, varias combinaciones):
+  // tallas: ["CH", "M"], colores: [{ id, nombre, mini }], stock: { "idColor|talla": piezas }
+  variantes: false, tallas: [], colores: [], stock: {},
 };
+
+// ---------------------------------------------------------------------------
+// Tallas y colores
+// ---------------------------------------------------------------------------
+export const TALLAS_RAPIDAS = ["XCH", "CH", "M", "G", "EG", "EEG", "Unitalla"];
+export const claveVariante = (colorId, talla) => `${colorId}|${talla}`;
+export const esVariable = (p) => Boolean(p?.variantes) && Array.isArray(p.tallas) && Array.isArray(p.colores) && p.tallas.length > 0 && p.colores.length > 0;
+export const stockVariante = (p, clave) => Math.max(0, Math.floor(Number(p?.stock?.[clave]) || 0));
+export const combinaciones = (p) => (esVariable(p) ? p.colores.flatMap((c) => p.tallas.map((t) => ({ clave: claveVariante(c.id, t), color: c, talla: t }))) : []);
+export const totalVariantes = (p) => combinaciones(p).reduce((s, c) => s + stockVariante(p, c.clave), 0);
+export function datosVariante(p, clave) {
+  const [colorId, ...resto] = String(clave || "").split("|");
+  const talla = resto.join("|");
+  const color = (p?.colores || []).find((c) => c.id === colorId);
+  if (!color || !(p?.tallas || []).includes(talla)) return null;
+  return { clave, colorId, color: color.nombre, talla, texto: [color.nombre, talla].filter(Boolean).join(" · ") };
+}
+// Documento con la foto de un color (fuera del producto para no rebasar 1 MB).
+export const fotoColorDoc = (productoId, colorId) => doc(db, "settings", `fotocolor_${productoId}_${colorId}`);
 
 // ---------------------------------------------------------------------------
 // Utilidades
@@ -60,7 +82,11 @@ export function whatsappUrl(telefono, texto) {
 // Los productos guardados con la versión anterior (Disponible/Vendida) se leen así:
 // - Vendida  → stock 0 y una venta con su fecha (se puede deshacer con el PIN).
 // - Disponible → stock = cantidad registrada.
+// Prendas con tallas y colores: `cantidad` es la suma de todas las combinaciones.
 export function normalizarProducto(p) {
+  if (esVariable(p)) {
+    return { ...p, stock: p.stock && typeof p.stock === "object" ? p.stock : {}, ventas: Array.isArray(p.ventas) ? p.ventas : [], cantidad: totalVariantes(p) };
+  }
   if (Array.isArray(p.ventas)) {
     const n = Number(p.cantidad);
     return { ...p, cantidad: Number.isFinite(n) ? Math.max(0, n) : 0 };
@@ -73,6 +99,24 @@ export function normalizarProducto(p) {
     };
   }
   return { ...p, cantidad: n, ventas: [] };
+}
+
+// Descuenta (o regresa, con signo negativo) piezas de un producto.
+// Devuelve el producto actualizado o lanza un error si no alcanzan.
+export function moverPiezas(p, qty, variante) {
+  if (esVariable(p)) {
+    const v = datosVariante(p, variante);
+    if (!v) throw new Error(`Elige talla y color de «${p.nombre}».`);
+    const hay = stockVariante(p, variante);
+    if (qty > hay) throw new Error(`«${p.nombre}» ${v.texto}: pide ${qty}, hay ${hay}`);
+    const stock = { ...p.stock, [variante]: hay - qty };
+    const q = { ...p, stock };
+    const total = totalVariantes(q);
+    return { ...q, cantidad: total, disponible: total > 0 };
+  }
+  if (qty > p.cantidad) throw new Error(`«${p.nombre}»: pide ${qty}, hay ${p.cantidad}`);
+  const restante = p.cantidad - qty;
+  return { ...p, cantidad: restante, disponible: restante > 0 };
 }
 
 // Totales de un pedido de cliente.
@@ -126,23 +170,32 @@ export async function confirmarPedido(pedido, { extras = {} } = {}) {
     const faltantes = [];
     const productos = snaps.map((s, k) => {
       if (!s.exists()) { faltantes.push(`«${pedido.items.find((i) => i.id === ids[k])?.nombre || "Producto"}» ya no existe`); return null; }
-      const p = normalizarProducto(s.data());
-      if (qtyPorProducto[ids[k]] > p.cantidad) faltantes.push(`«${p.nombre}»: pide ${qtyPorProducto[ids[k]]}, hay ${p.cantidad}`);
-      return p;
+      return normalizarProducto(s.data());
     });
-    if (faltantes.length) throw new Error(`No hay piezas suficientes. ${faltantes.join(" · ")}`);
 
+    // Descuenta pieza por pieza (por talla y color en las prendas con variantes).
     let costoProductos = 0;
+    const actualizados = {};
     productos.forEach((p, k) => {
+      if (!p) return;
       const id = ids[k];
+      let q = p;
       const ventas = [...p.ventas];
       (pedido.items || []).filter((i) => i.id === id).forEach((i) => {
-        ventas.push({ id: uid(), at: ahora, qty: Number(i.qty) || 0, precio: Number(i.precio) || 0, costo: Number(p.precioCompra) || 0, pedido: pedido.folio, pedidoId: pedido.id });
-        costoProductos += (Number(p.precioCompra) || 0) * (Number(i.qty) || 0);
+        const qty = Number(i.qty) || 0;
+        try { q = moverPiezas(q, qty, i.variante); }
+        catch (e) { faltantes.push(e.message); return; }
+        const v = esVariable(p) ? datosVariante(p, i.variante) : null;
+        ventas.push({
+          id: uid(), at: ahora, qty, precio: Number(i.precio) || 0, costo: Number(p.precioCompra) || 0, pedido: pedido.folio, pedidoId: pedido.id,
+          ...(v ? { variante: v.clave, color: v.color, talla: v.talla } : {}),
+        });
+        costoProductos += (Number(p.precioCompra) || 0) * qty;
       });
-      const restante = p.cantidad - qtyPorProducto[id];
-      tx.set(doc(db, "products", id), { ...p, cantidad: restante, disponible: restante > 0, vendidaAt: restante > 0 ? null : ahora, ventas });
+      actualizados[id] = { ...q, vendidaAt: q.cantidad > 0 ? null : ahora, ventas };
     });
+    if (faltantes.length) throw new Error(`No hay piezas suficientes. ${faltantes.join(" · ")}`);
+    Object.entries(actualizados).forEach(([id, p]) => tx.set(doc(db, "products", id), p));
 
     // Embalaje que se usa en cada pedido
     const lista = snapEmb.exists() && Array.isArray(snapEmb.data().lista) ? snapEmb.data().lista : [];
@@ -222,8 +275,15 @@ export async function guardarOrdenCompra(oc, { recibir = false } = {}) {
         const stockAnt = Math.max(0, p.cantidad);
         const stock = stockAnt + i.cantidad;
         const costoAnt = Number(p.precioCompra) || 0;
+        // Prendas con tallas y colores: las piezas van a la combinación elegida.
+        let porVariante = {};
+        if (esVariable(p)) {
+          if (!datosVariante(p, i.variante)) throw new Error(`Elige talla y color de «${i.articulo}».`);
+          porVariante = { stock: { ...p.stock, [i.variante]: stockVariante(p, i.variante) + i.cantidad } };
+        }
         existentes[i.productoId] = {
           ...p,
+          ...porVariante,
           cantidad: stock,
           disponible: true,
           vendidaAt: null,

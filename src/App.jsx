@@ -14,7 +14,7 @@ import {
 import { db } from "./firebase";
 import { TEXTOS_BASE, ETIQUETAS, SECCIONES, rellenar, variablesDe, claveAFirestore, claveDeFirestore } from "./textos";
 import { Modal, Field, inputCls, inputStyle, varsColores } from "./ui";
-import ImageEditor, { TAMANOS_PRODUCTO, urlADataUrl } from "./ImageEditor";
+import ImageEditor, { TAMANOS_PRODUCTO, urlADataUrl, comprimir } from "./ImageEditor";
 import {
   EdicionCtx, useEdicion, T, Editable, EditBadge, BotonFoto, EditorCampo, BarraEdicion,
   TextosPanel, CategoriasPanel, DisenoPanel, TamanoLogo,
@@ -23,6 +23,7 @@ import {
   EMPTY_PRODUCT, normalizarProducto, normalizar, whatsappUrl, formatoFolio, conceptoNombre,
   COLONIAS_DOC, EMBALAJE_DOC, REGISTROS_QUERY, COLONIAS_IZCALLI,
   crearPedido, confirmarPedido, cancelarPedido, guardarColonias,
+  esVariable, datosVariante, combinaciones, stockVariante, moverPiezas, claveVariante, fotoColorDoc, TALLAS_RAPIDAS,
 } from "./negocio";
 import { IconoCarritoMas, Contador, CantidadModal, SugerenciaModal, BarraCarrito, Checkout, AvisoSalida } from "./Compra";
 import { OrdenCompraModal, ListaOC, OrdenesVentaTab, FinanzasTab, ColoniasModal, ConfirmarPedidoModal } from "./Administracion";
@@ -140,7 +141,27 @@ function ventasPlanas(products) {
 }
 
 const aspectoCss = (a) => (a || "3:4").replace(":", " / ");
-const detalleDe = (p) => [p.talla, p.color].filter(Boolean).join(" · ");
+const detalleDe = (p) => (esVariable(p)
+  ? [p.tallas.join(" "), p.colores.map((c) => c.nombre).filter(Boolean).join(", ")].filter(Boolean).join(" · ")
+  : [p.talla, p.color].filter(Boolean).join(" · "));
+// Texto para buscar: incluye clave, tallas y colores del modelo.
+const textoBusqueda = (p, extra = []) => [p.clave, p.nombre, p.categoria, p.subcategoria, p.color, p.talla, p.material, p.genero, ...extra,
+  ...(esVariable(p) ? [...p.tallas, ...p.colores.map((c) => c.nombre)] : [])].join(" ").toLowerCase();
+const coloresDe = (p) => (esVariable(p) ? p.colores.map((c) => (c.nombre || "").trim()) : [(p.color || "").trim()]);
+// Prendas en la tienda: solo las tallas y colores que tienen piezas.
+const detalleDisponible = (p) => {
+  const hay = (c, ta) => stockVariante(p, claveVariante(c.id, ta)) > 0;
+  const tallas = p.tallas.filter((ta) => p.colores.some((c) => hay(c, ta)));
+  const n = p.colores.filter((c) => p.tallas.some((ta) => hay(c, ta))).length;
+  return [tallas.join(" "), n ? `${n} ${n === 1 ? "color" : "colores"}` : ""].filter(Boolean).join(" · ");
+};
+// Renglón del carrito: el producto, o el producto en una talla y color.
+const lineaId = (productoId, variante) => (variante ? `${productoId}~${variante}` : productoId);
+// Piezas de una combinación en texto: «Café: CH 2 · M 1 | Crema: G 3».
+const resumenExistencias = (p) => p.colores.map((c) => {
+  const tallas = p.tallas.map((t) => [t, stockVariante(p, claveVariante(c.id, t))]).filter(([, n]) => n > 0);
+  return `${c.nombre}: ${tallas.length ? tallas.map(([t, n]) => `${t} ${n}`).join(" · ") : "agotado"}`;
+}).join(" | ");
 
 function descargar(blob, nombre) {
   const url = URL.createObjectURL(blob);
@@ -247,6 +268,8 @@ export default function App() {
   const [form, setForm] = useState(EMPTY_PRODUCT);
   const [formImage, setFormImage] = useState(null);
   const [formFoto, setFormFoto] = useState({ original: null, recorte: undefined });
+  // Fotos de colores cambiadas en el formulario: { idColor: { imagen, original, recorte } | { quitar: true } }
+  const [fotosForm, setFotosForm] = useState({});
   const [saving, setSaving] = useState(false);
 
   const [editorCampo, setEditorCampo] = useState(null);
@@ -481,6 +504,17 @@ export default function App() {
   // -------------------------------------------------------------------
   const actualizarProducto = (id, cambios) => setDoc(doc(db, "products", id), cambios, { merge: true });
 
+  // Foto de cada color de una prenda (se descarga solo al abrir el modelo).
+  const fotosColorRef = useRef({});
+  const cargarFotoColor = useCallback(async (pid, cid) => {
+    const k = `${pid}_${cid}`;
+    if (k in fotosColorRef.current) return fotosColorRef.current[k];
+    const snap = await getDoc(fotoColorDoc(pid, cid));
+    const src = snap.exists() ? snap.data().src || null : null;
+    fotosColorRef.current[k] = src;
+    return src;
+  }, []);
+
   const editarCampoProducto = (p, campo) => {
     const defs = {
       nombre: { titulo: "Nombre del producto", requerido: true },
@@ -515,12 +549,15 @@ export default function App() {
     ayuda: `El recuadro usa el formato del catálogo (${settings.fotoAspecto || "3:4"}); cámbialo en «Diseño e imágenes».`,
     onGuardar: async ({ imagen, original, recorte }) => {
       if (original) await setDoc(originalDoc(p.id), { src: original, productoId: p.id, actualizado: Date.now() });
-      await actualizarProducto(p.id, { imagen, recorte: recorte || null });
+      await actualizarProducto(p.id, { imagen, recorte: recorte || null, portadaPropia: true });
       setEditorImagen(null);
       avisar(t("general.guardado"));
     },
     onQuitar: p.imagen ? async () => {
-      await actualizarProducto(p.id, { imagen: null, recorte: null });
+      // En prendas, al quitar la portada se vuelve a usar la foto del primer color.
+      const primero = esVariable(p) ? p.colores.find((c) => c.foto) : null;
+      const deColor = primero ? await cargarFotoColor(p.id, primero.id).catch(() => null) : null;
+      await actualizarProducto(p.id, { imagen: deColor || null, recorte: null, portadaPropia: false });
       await deleteDoc(originalDoc(p.id)).catch(() => {});
       setEditorImagen(null);
       avisar(t("general.guardado"));
@@ -594,25 +631,39 @@ export default function App() {
     return visibles.filter((p) => {
       if (activeCat !== "Todas" && p.categoria !== activeCat) return false;
       if (terms.length === 0) return true;
-      const hay = [p.nombre, p.categoria, p.subcategoria, p.color, p.talla, p.material, p.genero]
-        .join(" ").toLowerCase();
+      const hay = textoBusqueda(p);
       return terms.every((term) => hay.includes(term));
     });
   }, [visibles, query, activeCat]);
 
   // -------------------------------------------------------------------
-  // Carrito (no permite pedir más piezas de las que hay)
+  // Carrito (no permite pedir más piezas de las que hay).
+  // Cada renglón es un producto o, en prendas, un producto en una talla y color.
   // -------------------------------------------------------------------
-  const stockDe = useCallback((id) => products.find((p) => p.id === id)?.cantidad || 0, [products]);
+  const stockDe = useCallback((id) => {
+    const [pid, variante] = String(id).split("~");
+    const p = products.find((x) => x.id === pid);
+    if (!p) return 0;
+    return variante ? stockVariante(p, variante) : p.cantidad || 0;
+  }, [products]);
   const enCarritoDe = (id) => cart.find((i) => i.id === id)?.qty || 0;
+  const enCarritoProducto = (pid) => cart.filter((i) => (i.productoId || i.id) === pid).reduce((s, i) => s + i.qty, 0);
 
-  const addToCart = (product, qty) => {
-    const n = Math.min(qty, product.cantidad - enCarritoDe(product.id));
-    if (n <= 0) { avisar(t("tarjeta.limite", { n: product.cantidad }), "error"); return false; }
+  const addToCart = (product, qty, variante = null) => {
+    const v = variante ? datosVariante(product, variante) : null;
+    if (esVariable(product) && !v) return false;
+    const id = lineaId(product.id, v?.clave);
+    const hay = v ? stockVariante(product, v.clave) : product.cantidad;
+    const n = Math.min(qty, hay - enCarritoDe(id));
+    if (n <= 0) { avisar(t("tarjeta.limite", { n: hay }), "error"); return false; }
     setCart((c) => {
-      const existing = c.find((i) => i.id === product.id);
-      if (existing) return c.map((i) => (i.id === product.id ? { ...i, qty: i.qty + n } : i));
-      return [...c, { id: product.id, nombre: product.nombre, detalle: detalleDe(product), precioVenta: product.precioVenta, qty: n }];
+      const existing = c.find((i) => i.id === id);
+      if (existing) return c.map((i) => (i.id === id ? { ...i, qty: i.qty + n } : i));
+      return [...c, {
+        id, productoId: product.id, nombre: product.nombre, precioVenta: product.precioVenta, qty: n,
+        detalle: v ? v.texto : detalleDe(product),
+        ...(v ? { variante: v.clave, color: v.color, talla: v.talla } : {}),
+      }];
     });
     return true;
   };
@@ -627,17 +678,18 @@ export default function App() {
 
   // Al agregar: se sugiere el producto configurado (si hay piezas y no está ya en el carrito).
   const abrirCantidad = (p, opciones = {}) => setCantidadTarget({ p, grande: Boolean(opciones.grande) });
-  const confirmarCantidad = (qty) => {
+  const confirmarCantidad = (qty, variante) => {
     const p = cantidadTarget?.p;
     setCantidadTarget(null);
-    agregarConCantidad(p, qty);
+    agregarConCantidad(p, qty, variante);
   };
   // Agrega al carrito y, si aplica, sugiere el producto configurado.
-  const agregarConCantidad = (p, qty) => {
-    if (!p || !addToCart(p, qty)) return;
+  const agregarConCantidad = (p, qty, variante = null) => {
+    if (p && esVariable(p) && !variante) { abrirCantidad(p, { grande: true }); return; }
+    if (!p || !addToCart(p, qty, variante)) return;
     const objetivo = normalizar(t("compra.sugeridoNombre"));
     const sp = objetivo && products.find((x) => normalizar(x.nombre) === objetivo);
-    if (sp && sp.id !== p.id && !sp.oculto && sp.cantidad > 0 && !enCarritoDe(sp.id)) setSugerencia(sp);
+    if (sp && sp.id !== p.id && !esVariable(sp) && !sp.oculto && sp.cantidad > 0 && !enCarritoDe(sp.id)) setSugerencia(sp);
     else avisar(t("compra.agregado"));
   };
 
@@ -741,12 +793,50 @@ export default function App() {
   // Admin: formulario de producto
   // -------------------------------------------------------------------
   const openNewForm = () => {
-    setForm(EMPTY_PRODUCT); setFormImage(null); setFormFoto({ original: null, recorte: undefined });
+    setForm(EMPTY_PRODUCT); setFormImage(null); setFormFoto({ original: null, recorte: undefined }); setFotosForm({});
     setEditingId(null); setFormOpen(true);
   };
   const openEditForm = (p) => {
-    setForm({ ...EMPTY_PRODUCT, ...p }); setFormImage(p.imagen || null); setFormFoto({ original: null, recorte: undefined });
+    // En prendas, si la portada se tomó del primer color, el campo de portada queda vacío.
+    setForm({ ...EMPTY_PRODUCT, ...p }); setFormImage(p.portadaPropia === false ? null : p.imagen || null);
+    setFormFoto({ original: null, recorte: undefined }); setFotosForm({});
     setEditingId(p.id); setFormOpen(true);
+  };
+
+  // Foto de un color en el formulario (se guarda al guardar el producto).
+  const editarFotoColor = async (color) => {
+    const pendiente = fotosForm[color.id];
+    let src = pendiente?.imagen || null;
+    if (!pendiente && editingId && color.foto) {
+      try { src = await cargarFotoColor(editingId, color.id); } catch { src = null; }
+    }
+    const claveOriginal = `${editingId}_${color.id}`;
+    setEditorImagen({
+      titulo: [form.clave || form.nombre || "Modelo", color.nombre || "Color"].join(" · "),
+      src,
+      cargarOriginal: pendiente?.original ? async () => pendiente.original : (!pendiente && editingId && color.foto ? cargarOriginalDe(claveOriginal) : undefined),
+      recorteInicial: pendiente ? pendiente.recorte || null : color.recorte || null,
+      aspecto: settings.fotoAspecto || "3:4",
+      tamanos: TAMANOS_PRODUCTO,
+      onGuardar: async ({ imagen, original, recorte }) => {
+        const mini = await comprimir(imagen, { maxLado: 160, calidad: 0.75 });
+        setFotosForm((f) => ({ ...f, [color.id]: { imagen, original: original || f[color.id]?.original || null, recorte: recorte || null } }));
+        setForm((x) => ({ ...x, colores: x.colores.map((c) => (c.id === color.id ? { ...c, mini, foto: true, recorte: recorte || null } : c)) }));
+        setEditorImagen(null);
+      },
+      onQuitar: src || color.mini ? async () => {
+        setFotosForm((f) => ({ ...f, [color.id]: { quitar: true } }));
+        setForm((x) => ({ ...x, colores: x.colores.map((c) => (c.id === color.id ? { ...c, mini: null, foto: false, recorte: null } : c)) }));
+        setEditorImagen(null);
+      } : undefined,
+    });
+  };
+
+  // Borra la foto (y su original) de un color.
+  const borrarFotoColor = async (pid, cid) => {
+    fotosColorRef.current[`${pid}_${cid}`] = null;
+    await deleteDoc(fotoColorDoc(pid, cid)).catch(() => {});
+    await deleteDoc(originalDoc(`${pid}_${cid}`)).catch(() => {});
   };
   const closeForm = () => setFormOpen(false);
 
@@ -772,14 +862,39 @@ export default function App() {
   const submitForm = async (e) => {
     e.preventDefault();
     if (!form.nombre.trim() || !form.categoria) return;
-    setSaving(true);
     const id = editingId || uid();
     const actual = editingId ? products.find((p) => p.id === editingId) : null;
     const ventas = actual ? actual.ventas : [];
-    const stock = Math.max(0, Math.floor(Number(form.cantidad) || 0));
+    const variable = Boolean(form.variantes);
+
+    // Prendas: tallas, colores y piezas por combinación (solo las que existen).
+    const colores = variable ? form.colores.map((c) => ({
+      id: c.id, nombre: (c.nombre || "").trim(), mini: c.mini || null, foto: Boolean(c.foto), recorte: c.recorte || null,
+    })) : [];
+    const tallas = variable ? [...form.tallas] : [];
+    const stockVar = {};
+    if (variable) {
+      combinaciones({ variantes: true, tallas, colores }).forEach(({ clave }) => {
+        const n = Math.max(0, Math.floor(Number(form.stock?.[clave]) || 0));
+        if (n > 0) stockVar[clave] = n;
+      });
+      // Aviso si se quitan tallas o colores que todavía tenían piezas.
+      if (actual && esVariable(actual)) {
+        const nuevas = new Set(combinaciones({ variantes: true, tallas, colores }).map((x) => x.clave));
+        const perdidas = combinaciones(actual).filter(({ clave }) => !nuevas.has(clave) && stockVariante(actual, clave) > 0);
+        const n = perdidas.reduce((s, x) => s + stockVariante(actual, x.clave), 0);
+        if (n > 0 && !window.confirm(`Quitaste tallas o colores que tenían ${n} pieza(s) en inventario (${perdidas.map((x) => `${x.color.nombre} ${x.talla}`).join(", ")}). ¿Guardar de todos modos?`)) return;
+      }
+    }
+    const stock = variable
+      ? Object.values(stockVar).reduce((s, n) => s + n, 0)
+      : Math.max(0, Math.floor(Number(form.cantidad) || 0));
+
+    setSaving(true);
     const { id: _omit, ...datos } = form; // eslint-disable-line no-unused-vars
     const record = {
       ...datos,
+      clave: (form.clave || "").trim(),
       precioVenta: Number(form.precioVenta) || 0,
       precioCompra: Number(form.precioCompra) || 0,
       cantidad: stock,
@@ -787,16 +902,42 @@ export default function App() {
       oculto: Boolean(form.oculto),
       ventas,
       imagen: formImage || null,
+      portadaPropia: Boolean(formImage),
+      variantes: variable, tallas, colores, stock: stockVar,
       createdAt: form.createdAt || Date.now(),
       vendidaAt: stock > 0 ? null : (form.vendidaAt || (actual && ultimaVenta(actual)?.at) || null),
     };
+    if (variable) {
+      record.talla = tallas.join(", ");
+      record.color = colores.map((c) => c.nombre).filter(Boolean).join(", ");
+    }
     if (!formImage) record.recorte = null;
     else if (formFoto.recorte !== undefined) record.recorte = formFoto.recorte;
     try {
+      // Fotos de colores: nuevas, cambiadas o quitadas (y las de colores eliminados).
+      for (const c of colores) {
+        const f = fotosForm[c.id];
+        if (f?.quitar) await borrarFotoColor(id, c.id);
+        else if (f?.imagen) {
+          await setDoc(fotoColorDoc(id, c.id), { src: f.imagen, productoId: id, colorId: c.id, actualizado: Date.now() });
+          if (f.original) await setDoc(originalDoc(`${id}_${c.id}`), { src: f.original, productoId: id, actualizado: Date.now() });
+          fotosColorRef.current[`${id}_${c.id}`] = f.imagen;
+        }
+      }
+      const vivos = new Set(colores.map((c) => c.id));
+      for (const c of (actual?.colores || [])) if (!vivos.has(c.id) && c.foto) await borrarFotoColor(id, c.id);
+
+      // Sin portada propia: se usa la foto del primer color que tenga.
+      if (variable && !formImage) {
+        const primero = colores.find((c) => c.foto);
+        record.imagen = primero ? (fotosForm[primero.id]?.imagen || await cargarFotoColor(id, primero.id).catch(() => null) || null) : null;
+      }
+
       if (formFoto.original) await setDoc(originalDoc(id), { src: formFoto.original, productoId: id, actualizado: Date.now() });
       else if (!formImage && editingId) await deleteDoc(originalDoc(id)).catch(() => {});
       await setDoc(doc(db, "products", id), record);
-    } catch {
+    } catch (err) {
+      console.error(err);
       setConnError(true);
     }
     setSaving(false);
@@ -805,8 +946,10 @@ export default function App() {
 
   const deleteProduct = async (id) => {
     try {
+      const p = products.find((x) => x.id === id);
       await deleteDoc(doc(db, "products", id));
       await deleteDoc(originalDoc(id)).catch(() => {});
+      for (const c of (p?.colores || [])) if (c.foto) await borrarFotoColor(id, c.id);
     } catch { setConnError(true); }
   };
 
@@ -818,20 +961,19 @@ export default function App() {
   // -------------------------------------------------------------------
   // Ventas por pieza (transacción: evita vender piezas que ya no hay)
   // -------------------------------------------------------------------
-  const registrarVenta = async (id, qty, precio) => {
+  const registrarVenta = async (id, qty, precio, variante = null) => {
     const ref = doc(db, "products", id);
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error("El producto ya no existe.");
       const p = normalizarProducto({ ...snap.data() });
-      if (qty < 1 || qty > p.cantidad) throw new Error(t("venta.sinStock"));
-      const restante = p.cantidad - qty;
-      const venta = { id: uid(), at: Date.now(), qty, precio, costo: Number(p.precioCompra) || 0 };
+      if (qty < 1) throw new Error(t("venta.sinStock"));
+      const q = moverPiezas(p, qty, variante);
+      const v = esVariable(p) ? datosVariante(p, variante) : null;
+      const venta = { id: uid(), at: Date.now(), qty, precio, costo: Number(p.precioCompra) || 0, ...(v ? { variante: v.clave, color: v.color, talla: v.talla } : {}) };
       tx.set(ref, {
-        ...p,
-        cantidad: restante,
-        disponible: restante > 0,
-        vendidaAt: restante > 0 ? null : venta.at,
+        ...q,
+        vendidaAt: q.cantidad > 0 ? null : venta.at,
         ventas: [...p.ventas, venta],
       });
     });
@@ -846,9 +988,13 @@ export default function App() {
       const p = normalizarProducto({ ...snap.data() });
       const venta = p.ventas.find((v) => v.id === ventaId);
       if (!venta) return;
+      // Prendas: las piezas regresan a su talla y color.
+      if (esVariable(p) && !datosVariante(p, venta.variante)) {
+        throw new Error(`La talla o el color de esta venta (${[venta.color, venta.talla].filter(Boolean).join(" ") || "sin dato"}) ya no está en el modelo. Agrégalo de nuevo para regresar las piezas.`);
+      }
+      const q = moverPiezas(p, -(Number(venta.qty) || 0), venta.variante);
       tx.set(ref, {
-        ...p,
-        cantidad: p.cantidad + (Number(venta.qty) || 0),
+        ...q,
         disponible: true,
         vendidaAt: null,
         ventas: p.ventas.filter((v) => v.id !== ventaId),
@@ -863,9 +1009,9 @@ export default function App() {
     const rows = products.map((p) => {
       const ult = ultimaVenta(p);
       return {
-        Nombre: p.nombre, Categoría: p.categoria, Subcategoría: p.subcategoria,
+        Clave: p.clave || "", Nombre: p.nombre, Categoría: p.categoria, Subcategoría: p.subcategoria,
         Color: p.color, Talla: p.talla, Material: p.material, Género: p.genero, Grupo: p.grupo,
-        "Piezas en stock": p.cantidad, "Piezas vendidas": piezasVendidas(p),
+        "Piezas en stock": p.cantidad, "Piezas por talla y color": esVariable(p) ? resumenExistencias(p) : "", "Piezas vendidas": piezasVendidas(p),
         "Precio compra": p.precioCompra, "Precio venta": p.precioVenta,
         "Valor inventario (costo)": (Number(p.precioCompra) || 0) * p.cantidad,
         "Valor inventario (venta)": (Number(p.precioVenta) || 0) * p.cantidad,
@@ -878,7 +1024,7 @@ export default function App() {
       };
     });
     const ventas = ventasPlanas(products).sort((a, b) => b.at - a.at).map((v) => ({
-      Fecha: fmtDateTime(v.at), Producto: v.nombre, Categoría: v.categoria, Piezas: v.qty,
+      Fecha: fmtDateTime(v.at), Producto: v.nombre, "Color y talla": [v.color, v.talla].filter(Boolean).join(" "), Categoría: v.categoria, Piezas: v.qty,
       "Precio por pieza": v.precio, Total: v.precio * v.qty, "Costo por pieza": v.costo, Utilidad: (v.precio - v.costo) * v.qty,
     }));
     const wb = XLSX.utils.book_new();
@@ -888,7 +1034,7 @@ export default function App() {
       Folio: formatoFolio("PV", p.folio), Fecha: fmtDateTime(p.createdAt), Estado: p.estado, Cliente: p.nombre, Teléfono: p.telefono,
       Colonia: p.colonia, Municipio: p.municipio, Dirección: p.direccion, "Método de pago": p.metodoPago,
       Productos: p.subtotal, Envío: p.envio, "Cargo terminal": p.cargoTarjeta, Total: p.total,
-      Artículos: (p.items || []).map((i) => `${i.qty}x ${i.nombre}`).join(", "),
+      Artículos: (p.items || []).map((i) => `${i.qty}x ${i.nombre}${i.variante && i.detalle ? ` (${i.detalle})` : ""}`).join(", "),
     }));
     const hojaGastos = gastos.map((g) => ({ Fecha: g.fecha, Concepto: conceptoNombre(g.concepto), Descripción: g.descripcion, Monto: g.monto, Origen: g.origen }));
     if (hojaPedidos.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaPedidos), "Pedidos");
@@ -927,9 +1073,14 @@ export default function App() {
   const vaciarCatalogo = async () => {
     await exportBackup();
     const snap = await getDocs(PRODUCTS_COL);
-    for (let i = 0; i < snap.docs.length; i += 200) {
+    // Cada producto borra su documento, su foto original y las fotos de sus colores.
+    const refs = snap.docs.flatMap((d) => [
+      d.ref, originalDoc(d.id),
+      ...(d.data().colores || []).filter((c) => c.foto).flatMap((c) => [fotoColorDoc(d.id, c.id), originalDoc(`${d.id}_${c.id}`)]),
+    ]);
+    for (let i = 0; i < refs.length; i += 400) {
       const batch = writeBatch(db);
-      snap.docs.slice(i, i + 200).forEach((d) => { batch.delete(d.ref); batch.delete(originalDoc(d.id)); });
+      refs.slice(i, i + 400).forEach((r) => batch.delete(r));
       await batch.commit();
     }
     setCart([]);
@@ -1063,7 +1214,7 @@ export default function App() {
           <ClienteView
             products={filtered} query={query} setQuery={setQuery}
             activeCat={activeCat} setActiveCat={setActiveCat} categorias={categorias}
-            onAdd={abrirCantidad} onAgregarDirecto={agregarConCantidad} disponibleDe={(p) => Math.max(0, p.cantidad - enCarritoDe(p.id))}
+            onAdd={abrirCantidad} onAgregarDirecto={agregarConCantidad} disponibleDe={(p) => Math.max(0, p.cantidad - enCarritoProducto(p.id))}
             loading={loading} total={visibles.length}
             settings={settings} portada={imagenes.portada?.src}
             acciones={{
@@ -1097,8 +1248,10 @@ export default function App() {
         </footer>
 
         {cantidadTarget && (
-          <CantidadModal key={cantidadTarget.p.id} p={cantidadTarget.p} grande={cantidadTarget.grande}
-            maximo={Math.max(0, stockDe(cantidadTarget.p.id) - enCarritoDe(cantidadTarget.p.id))}
+          <CantidadModal key={cantidadTarget.p.id} p={cantidadTarget.p} grande={cantidadTarget.grande || esVariable(cantidadTarget.p)}
+            maximo={Math.max(0, stockDe(cantidadTarget.p.id) - enCarritoProducto(cantidadTarget.p.id))}
+            disponibleVariante={(clave) => Math.max(0, stockVariante(cantidadTarget.p, clave) - enCarritoDe(lineaId(cantidadTarget.p.id, clave)))}
+            cargarFotoColor={cargarFotoColor}
             onConfirmar={confirmarCantidad} onCerrar={() => setCantidadTarget(null)} />
         )}
         {sugerencia && (
@@ -1174,7 +1327,7 @@ export default function App() {
         {formOpen && (
           <Modal onClose={closeForm} title={<T k={editingId ? "form.tituloEditar" : "form.tituloNuevo"} />} wide>
             <ProductForm form={form} setForm={setForm} formImage={formImage}
-              onEditarFoto={editarFotoFormulario}
+              onEditarFoto={editarFotoFormulario} onFotoColor={editarFotoColor}
               onQuitarFoto={() => { setFormImage(null); setFormFoto({ original: null, recorte: null }); }}
               onSubmit={submitForm} onCancel={closeForm} saving={saving}
               categorias={categorias} onAgregarCategoria={agregarCategoria}
@@ -1426,7 +1579,7 @@ function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones })
   const [showLoc, setShowLoc] = useState(false);
   const verFoto = editando ? undefined : onVerFoto;
   const tecla = (ev) => { if (!editando && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onVerFoto(); } };
-  const detalle = [detalleDe(p), p.material].filter(Boolean).join(" · ");
+  const detalle = [esVariable(p) ? detalleDisponible(p) : detalleDe(p), p.material].filter(Boolean).join(" · ");
   const parar = (ev) => ev.stopPropagation();
   return (
     <div className="tarjeta-producto tarjeta-carrusel flex-shrink-0 snap-start">
@@ -1457,6 +1610,7 @@ function ProductCard({ p, onAdd, onVerFoto, aspecto, tam = "normal", acciones })
           <Editable as="p" className="text-[10px] font-semibold uppercase tracking-[0.08em] truncate opacity-90" onEditar={acciones.categoria} titulo="Cambiar categoría">
             {p.categoria || (editando ? t("dash.sinCategoria") : "")}
           </Editable>
+          {p.clave && <p className="text-lg sm:text-xl font-extrabold leading-none mt-0.5 truncate" style={{ letterSpacing: "-0.02em" }}>{p.clave}</p>}
           <Editable as="p" className="text-[13px] sm:text-sm font-bold leading-tight line-clamp-2 mt-0.5" onEditar={acciones.nombre} titulo="Editar nombre">{p.nombre}</Editable>
           <div className="mt-1.5" onClick={editando ? parar : undefined}>
             <Editable as="span" onEditar={acciones.precio} titulo="Editar precio"><PrecioTienda valor={p.precioVenta} tam={tam} /></Editable>
@@ -1498,8 +1652,10 @@ function FilaCatalogo({ p, disponible, onVerFoto, onAgregar, acciones }) {
   const [qty, setQty] = useState(1);
   const [listo, setListo] = useState(false);
   const max = Math.max(1, disponible);
+  const variable = esVariable(p);
   const agregar = () => {
     if (disponible <= 0) return;
+    if (variable) { onVerFoto(); return; } // primero elige talla y color
     onAgregar(Math.min(qty, disponible));
     setQty(1); setListo(true); setTimeout(() => setListo(false), 1200);
   };
@@ -1510,10 +1666,10 @@ function FilaCatalogo({ p, disponible, onVerFoto, onAgregar, acciones }) {
         {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" loading="lazy" /> : <ImageOff size={16} color="#BDBACC" />}
       </button>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: "#17152B" }}>{p.nombre}</p>
+        <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: "#17152B" }}>{p.clave && <strong className="mr-1">{p.clave}</strong>}{p.nombre}</p>
         <p className="text-[11px] truncate" style={{ color: "#8C89A0" }}>
           <span className="font-display text-sm mr-1" style={{ color: "#17152B" }}>{money(p.precioVenta)}</span>
-          {[p.categoria, detalleDe(p), t("catalogo.piezas", { n: p.cantidad })].filter(Boolean).join(" · ")}
+          {[p.categoria, variable ? detalleDisponible(p) : detalleDe(p), t("catalogo.piezas", { n: p.cantidad })].filter(Boolean).join(" · ")}
         </p>
       </div>
       {editando ? (
@@ -1522,7 +1678,7 @@ function FilaCatalogo({ p, disponible, onVerFoto, onAgregar, acciones }) {
         </button>
       ) : (
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {disponible > 0 && <Contador valor={Math.min(qty, max)} max={max} onCambiar={setQty} compacto />}
+          {disponible > 0 && !variable && <Contador valor={Math.min(qty, max)} max={max} onCambiar={setQty} compacto />}
           <button type="button" onClick={agregar} disabled={disponible <= 0}
             className="w-9 h-9 rounded-full flex items-center justify-center transition hover:scale-105 disabled:opacity-40"
             style={listo ? { background: "#2F8542", color: "#fff" } : { background: "var(--colorBoton)", color: "var(--colorBotonTexto)" }}
@@ -2055,7 +2211,8 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 
   const opciones = useMemo(() => {
     const uniq = (campo) => [...new Set(products.map((p) => (p[campo] || "").trim()).filter(Boolean))].sort();
-    return { categorias: uniq("categoria"), colores: uniq("color"), grupos: uniq("grupo"), proveedores: uniq("proveedor") };
+    const colores = [...new Set(products.flatMap((p) => coloresDe(p)).filter(Boolean))].sort();
+    return { categorias: uniq("categoria"), colores, grupos: uniq("grupo"), proveedores: uniq("proveedor") };
   }, [products]);
 
   const activos = useMemo(
@@ -2073,7 +2230,7 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
       if (f.estado === "agotado" && p.cantidad > 0) return false;
       if (f.estado === "oculto" && !p.oculto) return false;
       if (f.categoria && p.categoria !== f.categoria) return false;
-      if (f.color && (p.color || "").trim() !== f.color) return false;
+      if (f.color && !coloresDe(p).includes(f.color)) return false;
       if (f.grupo && (p.grupo || "").trim() !== f.grupo) return false;
       if (f.proveedor && (p.proveedor || "").trim() !== f.proveedor) return false;
 
@@ -2085,8 +2242,7 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
       }
 
       if (terms.length === 0) return true;
-      const hay = [p.nombre, p.categoria, p.subcategoria, p.color, p.talla, p.material, p.genero, p.grupo, p.proveedor, p.ubicacion]
-        .join(" ").toLowerCase();
+      const hay = textoBusqueda(p, [p.grupo, p.proveedor, p.ubicacion]);
       return terms.every((term) => hay.includes(term));
     });
 
@@ -2205,6 +2361,8 @@ function ProductosTab({ products, loading, onNew, onEdit, onDelete, onVender, on
 function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, onFoto }) {
   const { t } = useEdicion();
   const [verVentas, setVerVentas] = useState(false);
+  const [verPiezas, setVerPiezas] = useState(false);
+  const variable = esVariable(p);
   const agotado = p.cantidad <= 0;
   const dias = diasEnInventario(p);
   const ult = ultimaVenta(p);
@@ -2216,7 +2374,7 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
           {p.imagen ? <img src={p.imagen} alt="" className="w-full h-full object-cover" /> : <ImageOff size={16} color="#BDBACC" />}
         </Editable>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium truncate">{p.nombre}</p>
+          <p className="text-sm font-medium truncate">{p.clave && <strong className="mr-1">{p.clave}</strong>}{p.nombre}</p>
           <p className="text-xs truncate" style={{ color: "#8C89A0" }}>{[p.categoria, money(p.precioVenta), detalleDe(p)].filter(Boolean).join(" · ")}</p>
         </div>
         <span className="flex-shrink-0 text-[10px] font-medium px-2.5 py-1.5 rounded-full tracking-wide uppercase"
@@ -2252,6 +2410,11 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
         <button onClick={() => onOcultar(p)} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F6F5FA", color: "#4A4760" }}>
           {p.oculto ? <Eye size={12} /> : <EyeOff size={12} />} {t(p.oculto ? "prod.mostrar" : "prod.ocultar")}
         </button>
+        {variable && (
+          <button onClick={() => setVerPiezas((v) => !v)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F6F5FA", color: "#4A4760" }}>
+            <Tags size={12} /> Tallas y colores {verPiezas ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        )}
         {p.ventas.length > 0 && (
           <button onClick={() => setVerVentas((v) => !v)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full" style={{ background: "#F6F5FA", color: "#4A4760" }}>
             {t("prod.verVentas", { n: p.ventas.length })} {verVentas ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -2259,11 +2422,13 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
         )}
       </div>
 
+      {verPiezas && variable && <TablaExistencias p={p} />}
+
       {verVentas && p.ventas.length > 0 && (
         <div className="mt-2 rounded-lg p-2 space-y-1.5" style={{ background: "#F7F6FB" }}>
           {[...p.ventas].sort((a, b) => b.at - a.at).map((v) => (
             <div key={v.id} className="flex items-center justify-between gap-2 text-[11px]">
-              <span style={{ color: "#4A4760" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })} · <strong>{money((Number(v.precio) || 0) * (Number(v.qty) || 0))}</strong></span>
+              <span style={{ color: "#4A4760" }}>{fmtDateTime(v.at)} · {t("dash.ventaPiezas", { n: v.qty })}{v.variante ? ` · ${[v.color, v.talla].filter(Boolean).join(" ")}` : ""} · <strong>{money((Number(v.precio) || 0) * (Number(v.qty) || 0))}</strong></span>
               <button onClick={() => onDeshacer(p, v)} className="flex items-center gap-1 px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: "#FDF4E7", color: "#B0813C" }}>
                 <Undo2 size={11} /> {t("venta.deshacer")}
               </button>
@@ -2271,6 +2436,38 @@ function FilaProducto({ p, onEdit, onDelete, onVender, onOcultar, onDeshacer, on
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Piezas de una prenda por talla y color (solo lectura).
+function TablaExistencias({ p }) {
+  return (
+    <div className="mt-2 overflow-x-auto rounded-lg" style={{ background: "#F7F6FB" }}>
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr style={{ color: "#8C89A0" }}>
+            <th className="text-left font-medium px-2 py-1.5">Color</th>
+            {p.tallas.map((ta) => <th key={ta} className="text-center font-medium px-1.5 py-1.5">{ta}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {p.colores.map((c) => (
+            <tr key={c.id} className="border-t" style={{ borderColor: "#ECEAF2" }}>
+              <td className="px-2 py-1.5 whitespace-nowrap" style={{ color: "#4A4760" }}>
+                <span className="inline-flex items-center gap-1.5">
+                  {c.mini && <img src={c.mini} alt="" className="w-4 h-5 rounded object-cover" />}
+                  {c.nombre}
+                </span>
+              </td>
+              {p.tallas.map((ta) => {
+                const n = stockVariante(p, claveVariante(c.id, ta));
+                return <td key={ta} className="text-center px-1.5 py-1.5 font-medium" style={{ color: n > 0 ? "#17152B" : "#C3C0D0" }}>{n}</td>;
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -2307,13 +2504,18 @@ function VentaModal({ p, onCerrar, onRegistrar }) {
   const [precio, setPrecio] = useState(String(p.precioVenta ?? ""));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
-  const max = p.cantidad;
+  // Prendas: se elige la combinación vendida (solo las que tienen piezas).
+  const variable = esVariable(p);
+  const opciones = variable ? combinaciones(p).filter((x) => stockVariante(p, x.clave) > 0) : [];
+  const [variante, setVariante] = useState(opciones.length === 1 ? opciones[0].clave : "");
+  const max = variable ? (variante ? stockVariante(p, variante) : 0) : p.cantidad;
   const total = (Number(precio) || 0) * qty;
 
   const registrar = async () => {
+    if (variable && !variante) { setError("Elige el color y la talla vendidos."); return; }
     if (qty < 1 || qty > max) { setError(t("venta.sinStock")); return; }
     setGuardando(true); setError("");
-    try { await onRegistrar(p.id, qty, Number(precio) || 0); onCerrar(); }
+    try { await onRegistrar(p.id, qty, Number(precio) || 0, variable ? variante : null); onCerrar(); }
     catch (e) { setError(e?.message || t("general.errorGuardar")); setGuardando(false); }
   };
 
@@ -2325,9 +2527,19 @@ function VentaModal({ p, onCerrar, onRegistrar }) {
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium">{p.nombre}</p>
-          <p className="text-xs" style={{ color: "#8C89A0" }}>{[detalleDe(p), t("venta.disponibles", { n: max })].filter(Boolean).join(" · ")}</p>
+          <p className="text-xs" style={{ color: "#8C89A0" }}>{[variable ? "" : detalleDe(p), t("venta.disponibles", { n: variable ? p.cantidad : max })].filter(Boolean).join(" · ")}</p>
         </div>
       </div>
+      {variable && (
+        <div className="mb-4">
+          <Field label="Color y talla vendidos">
+            <select value={variante} onChange={(e) => { setVariante(e.target.value); setQty(1); setError(""); }} className={inputCls} style={inputStyle}>
+              <option value="">Selecciona</option>
+              {opciones.map((x) => <option key={x.clave} value={x.clave}>{x.color.nombre} · {x.talla} ({stockVariante(p, x.clave)} pza)</option>)}
+            </select>
+          </Field>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <T k="venta.cantidad" as="span" className="text-xs" style={{ color: "#4A4760" }} />
@@ -2392,12 +2604,149 @@ function DeshacerModal({ p, venta, pin, onCerrar, onConfirmar }) {
 // ---------------------------------------------------------------------------
 // Formulario de producto
 // ---------------------------------------------------------------------------
-function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onSubmit, onCancel, saving, categorias, onAgregarCategoria, vendidas, aspecto }) {
+const nuevoIdColor = () => "c" + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 5);
+
+// Tallas, colores (con foto) y piezas por combinación de una prenda.
+function EditorVariantes({ form, setForm, onFotoColor, aspecto }) {
+  const { t } = useEdicion();
+  const [otra, setOtra] = useState("");
+  const tallas = form.tallas || [];
+  const colores = form.colores || [];
+  const propias = tallas.filter((x) => !TALLAS_RAPIDAS.includes(x));
+  // Las tallas rápidas siempre en su orden (CH, M, G…); las demás después, como se agregaron.
+  const ordenar = (lista) => [...TALLAS_RAPIDAS.filter((x) => lista.includes(x)), ...lista.filter((x) => !TALLAS_RAPIDAS.includes(x))];
+  const alternarTalla = (x) => setForm((f) => {
+    const l = f.tallas || [];
+    return { ...f, tallas: ordenar(l.includes(x) ? l.filter((y) => y !== x) : [...l, x]) };
+  });
+  const agregarOtra = () => {
+    const x = otra.trim().replace(/\|/g, "/").toUpperCase();
+    if (!x) return;
+    if (!tallas.some((y) => y.toLowerCase() === x.toLowerCase())) setForm((f) => ({ ...f, tallas: ordenar([...(f.tallas || []), x]) }));
+    setOtra("");
+  };
+  const setColor = (id, cambios) => setForm((f) => ({ ...f, colores: f.colores.map((c) => (c.id === id ? { ...c, ...cambios } : c)) }));
+  const agregarColor = () => setForm((f) => ({ ...f, colores: [...(f.colores || []), { id: nuevoIdColor(), nombre: "", mini: null, foto: false }] }));
+  const quitarColor = (id) => setForm((f) => ({ ...f, colores: f.colores.filter((c) => c.id !== id) }));
+  const setPiezas = (clave, v) => setForm((f) => ({ ...f, stock: { ...(f.stock || {}), [clave]: v.replace(/[^0-9]/g, "") } }));
+  const total = colores.reduce((s, c) => s + tallas.reduce((s2, ta) => s2 + (Math.floor(Number(form.stock?.[claveVariante(c.id, ta)]) || 0)), 0), 0);
+
+  const chip = (activo) => (activo
+    ? { background: "var(--colorBoton)", color: "var(--colorBotonTexto)", borderColor: "var(--colorBoton)" }
+    : { background: "#fff", color: "#4A4760", borderColor: "#E3E0EC" });
+
+  return (
+    <div className="space-y-4 mt-3">
+      {/* Tallas */}
+      <div>
+        <T k="form.tallas" as="span" className="text-xs font-medium" style={{ color: "#4A4760" }} />
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {[...TALLAS_RAPIDAS, ...propias].map((x) => (
+            <button key={x} type="button" onClick={() => alternarTalla(x)} aria-pressed={tallas.includes(x)}
+              className="min-w-[44px] h-9 px-3 rounded-lg text-sm font-medium border transition" style={chip(tallas.includes(x))}>
+              {x}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-2">
+          <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder={t("form.otraTalla")}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); agregarOtra(); } }}
+            className={inputCls + " mt-0"} style={inputStyle} />
+          <button type="button" onClick={agregarOtra} className="px-4 rounded-xl text-sm font-medium flex-shrink-0 flex items-center gap-1" style={{ background: "#ECE8F6", color: "#4A4760" }}><Plus size={14} /> Talla</button>
+        </div>
+      </div>
+
+      {/* Colores */}
+      <div>
+        <T k="form.colores" as="span" className="text-xs font-medium" style={{ color: "#4A4760" }} />
+        <div className="space-y-2 mt-1.5">
+          {colores.map((c) => (
+            <div key={c.id} className="flex items-center gap-2">
+              <button type="button" onClick={() => onFotoColor(c)} className="w-11 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center border border-dashed"
+                style={{ aspectRatio: aspectoCss(aspecto), borderColor: c.mini ? "transparent" : "#C9C2DC", background: "#F6F5FA" }} aria-label={`Foto del color ${c.nombre || ""}`}>
+                {c.mini ? <img src={c.mini} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={15} color="#8C89A0" />}
+              </button>
+              <input value={c.nombre} onChange={(e) => setColor(c.id, { nombre: e.target.value })} placeholder={t("form.colorNombrePh")}
+                className={inputCls + " mt-0"} style={inputStyle} />
+              <button type="button" onClick={() => quitarColor(c.id)} className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#FBEAEA" }} aria-label="Quitar color"><Trash2 size={13} color="#B23B3B" /></button>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={agregarColor} className="mt-2 w-full rounded-xl border border-dashed py-2.5 text-sm flex items-center justify-center gap-1.5" style={{ borderColor: "#B9A7DD", color: "var(--colorAcento)", background: "#fff" }}>
+          <Plus size={14} /> {t("form.agregarColor")}
+        </button>
+      </div>
+
+      {/* Piezas por combinación */}
+      {tallas.length > 0 && colores.length > 0 && (
+        <div>
+          <T k="form.existencias" as="span" className="text-xs font-medium" style={{ color: "#4A4760" }} />
+          <div className="mt-1.5 overflow-x-auto rounded-xl border" style={{ borderColor: "#DCD8E8", background: "#fff" }}>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr style={{ background: "#EEEDF3", color: "#4A4760" }}>
+                  <th className="text-left text-[11px] font-semibold px-2 py-2">Color</th>
+                  {tallas.map((ta) => <th key={ta} className="text-center text-[11px] font-semibold px-1 py-2 min-w-[52px]">{ta}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {colores.map((c) => (
+                  <tr key={c.id} className="border-t" style={{ borderColor: "#E6E3EE" }}>
+                    <td className="px-2 py-1 text-xs whitespace-nowrap max-w-[110px] truncate" style={{ color: "#4A4760" }}>{c.nombre || "—"}</td>
+                    {tallas.map((ta) => {
+                      const clave = claveVariante(c.id, ta);
+                      return (
+                        <td key={ta} className="px-1 py-1">
+                          <input inputMode="numeric" value={form.stock?.[clave] ?? ""} onChange={(e) => setPiezas(clave, e.target.value)} placeholder="0"
+                            className="w-full min-w-[44px] text-center rounded-lg border px-1 py-2 text-sm outline-none focus:border-[#B9A7DD]" style={{ borderColor: "#E3E0EC" }}
+                            aria-label={`Piezas ${c.nombre} ${ta}`} />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs mt-1.5 text-right" style={{ color: "#4A4760" }}>Total: <strong>{total}</strong> pieza(s)</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductForm({ form, setForm, formImage, onEditarFoto, onFotoColor, onQuitarFoto, onSubmit, onCancel, saving, categorias, onAgregarCategoria, vendidas, aspecto }) {
   const { t } = useEdicion();
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const [nuevaCat, setNuevaCat] = useState(null);
   const [errorCat, setErrorCat] = useState("");
+  const [errorVar, setErrorVar] = useState("");
   const opcionesCat = form.categoria && !categorias.includes(form.categoria) ? [...categorias, form.categoria] : categorias;
+  const variable = Boolean(form.variantes);
+
+  // Al activar: lo que había en talla, color y piezas pasa a la primera combinación.
+  const alternarVariantes = (on) => {
+    setErrorVar("");
+    if (on) {
+      setForm((f) => {
+        if ((f.tallas || []).length || (f.colores || []).length) return { ...f, variantes: true };
+        const talla = (f.talla || "").trim().toUpperCase();
+        const color = (f.color || "").trim();
+        const c = color ? { id: nuevoIdColor(), nombre: color, mini: null, foto: false } : null;
+        const n = Math.max(0, Math.floor(Number(f.cantidad) || 0));
+        return {
+          ...f, variantes: true, tallas: talla ? [talla] : [], colores: c ? [c] : [],
+          stock: c && talla && n > 0 ? { [claveVariante(c.id, talla)]: String(n) } : {},
+        };
+      });
+      return;
+    }
+    if (!window.confirm("¿Quitar tallas y colores? Las piezas se juntarán en un solo total y se borrarán las fotos de los colores al guardar.")) return;
+    setForm((f) => {
+      const total = (f.colores || []).reduce((s, c) => s + (f.tallas || []).reduce((s2, ta) => s2 + (Math.floor(Number(f.stock?.[claveVariante(c.id, ta)]) || 0)), 0), 0);
+      return { ...f, variantes: false, cantidad: total, talla: "", color: "" };
+    });
+  };
 
   const crearCategoria = async () => {
     const nombre = (nuevaCat || "").trim();
@@ -2416,6 +2765,16 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
       setErrorCat("Toca «Agregar» para crear la categoría o elige una de la lista.");
       return;
     }
+    if (variable) {
+      const nombres = (form.colores || []).map((c) => (c.nombre || "").trim().toLowerCase());
+      let msg = "";
+      if (!(form.tallas || []).length) msg = "Elige al menos una talla.";
+      else if (!nombres.length) msg = "Agrega al menos un color.";
+      else if (nombres.some((n) => !n)) msg = "Escribe el nombre de cada color.";
+      else if (new Set(nombres).size !== nombres.length) msg = "Hay dos colores con el mismo nombre.";
+      if (msg) { e.preventDefault(); setErrorVar(msg); return; }
+    }
+    setErrorVar("");
     onSubmit(e);
   };
 
@@ -2425,6 +2784,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
         <input required value={form.nombre} onChange={set("nombre")} className={inputCls} style={inputStyle} placeholder={t("form.nombrePh")} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
+        <Field label={<T k="form.clave" />}><input value={form.clave || ""} onChange={set("clave")} className={inputCls} style={inputStyle} placeholder={t("form.clavePh")} /></Field>
         <Field label={<T k="form.categoria" />}>
           <select required value={nuevaCat !== null ? "__nueva__" : form.categoria}
             onChange={(e) => { if (e.target.value === "__nueva__") { setNuevaCat(""); } else { setNuevaCat(null); set("categoria")(e); } }}
@@ -2434,7 +2794,6 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
             <option value="__nueva__">{t("form.nuevaCategoria")}</option>
           </select>
         </Field>
-        <Field label={<T k="form.subcategoria" />}><input value={form.subcategoria} onChange={set("subcategoria")} className={inputCls} style={inputStyle} /></Field>
       </div>
       {nuevaCat !== null && (
         <div>
@@ -2452,17 +2811,38 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
         <Field label={<T k="form.precioVenta" />}><input required type="number" min="0" step="any" inputMode="decimal" value={form.precioVenta} onChange={set("precioVenta")} className={inputCls} style={inputStyle} placeholder="0" /></Field>
         <Field label={<T k="form.precioCompra" />}><input type="number" min="0" step="any" inputMode="decimal" value={form.precioCompra} onChange={set("precioCompra")} className={inputCls} style={inputStyle} placeholder="0" /></Field>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={<T k="form.talla" />}><input value={form.talla} onChange={set("talla")} className={inputCls} style={inputStyle} placeholder={t("form.tallaPh")} /></Field>
-        <Field label={<T k="form.color" />}><input value={form.color} onChange={set("color")} className={inputCls} style={inputStyle} placeholder={t("form.colorPh")} /></Field>
+
+      {/* Prenda con tallas y colores */}
+      <div className="rounded-2xl border p-3" style={{ borderColor: variable ? "var(--colorAcento)" : "#E3E0EC", background: "#fff" }}>
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input type="checkbox" checked={variable} onChange={(e) => alternarVariantes(e.target.checked)} className="mt-0.5 w-4 h-4 flex-shrink-0" style={{ accentColor: "var(--colorAcento)" }} />
+          <span>
+            <T k="form.variantes" as="span" className="text-sm font-medium block" style={{ color: "#17152B" }} />
+            <T k="form.variantesAyuda" as="span" className="text-[11px] block mt-0.5" style={{ color: "#8C89A0" }} />
+          </span>
+        </label>
+        {variable && <EditorVariantes form={form} setForm={setForm} onFotoColor={onFotoColor} aspecto={aspecto} />}
+        {errorVar && <p className="text-xs mt-2" style={{ color: "#B23B3B" }}>{errorVar}</p>}
       </div>
+
+      {!variable && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={<T k="form.talla" />}><input value={form.talla} onChange={set("talla")} className={inputCls} style={inputStyle} placeholder={t("form.tallaPh")} /></Field>
+            <Field label={<T k="form.color" />}><input value={form.color} onChange={set("color")} className={inputCls} style={inputStyle} placeholder={t("form.colorPh")} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={<T k="form.cantidad" />}><input type="number" min="0" step="1" inputMode="numeric" value={form.cantidad} onChange={set("cantidad")} className={inputCls} style={inputStyle} /></Field>
+          </div>
+        </>
+      )}
       <div className="grid grid-cols-2 gap-3">
+        <Field label={<T k="form.subcategoria" />}><input value={form.subcategoria} onChange={set("subcategoria")} className={inputCls} style={inputStyle} /></Field>
         <Field label={<T k="form.material" />}><input value={form.material} onChange={set("material")} className={inputCls} style={inputStyle} /></Field>
-        <Field label={<T k="form.genero" />}><input value={form.genero} onChange={set("genero")} className={inputCls} style={inputStyle} placeholder={t("form.generoPh")} /></Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
+        <Field label={<T k="form.genero" />}><input value={form.genero} onChange={set("genero")} className={inputCls} style={inputStyle} placeholder={t("form.generoPh")} /></Field>
         <Field label={<T k="form.grupo" />}><input value={form.grupo} onChange={set("grupo")} className={inputCls} style={inputStyle} placeholder={t("form.grupoPh")} /></Field>
-        <Field label={<T k="form.cantidad" />}><input type="number" min="0" step="1" inputMode="numeric" value={form.cantidad} onChange={set("cantidad")} className={inputCls} style={inputStyle} /></Field>
       </div>
       {vendidas > 0 && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs" style={{ background: "#EEEDF3", color: "#4A4760" }}>
@@ -2488,7 +2868,7 @@ function ProductForm({ form, setForm, formImage, onEditarFoto, onQuitarFoto, onS
       </div>
 
       <div>
-        <T k="form.foto" as="span" className="text-xs" style={{ color: "#4A4760" }} />
+        <T k={variable ? "form.portada" : "form.foto"} as="span" className="text-xs" style={{ color: "#4A4760" }} />
         {formImage ? (
           <div className="mt-1 flex items-start gap-3">
             <div className="w-28 rounded-xl overflow-hidden flex-shrink-0" style={{ background: "#EEEDF3", aspectRatio: aspectoCss(aspecto) }}>
